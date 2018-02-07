@@ -1,0 +1,12 @@
+*.o
+*.d
+*~
+core
+examples/*
+!examples/*.c
+build/
+userprog/bochsrc.txt
+utils/qemu
+utils/setitimer-helper
+utils/squish-pty
+utils/squish-unix

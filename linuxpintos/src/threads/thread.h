@@ -5,6 +5,8 @@
 #include <list.h>
 #include <stdint.h>
 
+#define FD_MAX 130
+
 /* States in a thread's life cycle. */
 enum thread_status
   {
@@ -54,7 +56,7 @@ typedef int tid_t;
              |              status             |
         0 kB +---------------------------------+
 
-   The upshot of this is twofold:
+   The result of this is twofold:
 
       1. First, `struct thread' must not be allowed to grow too
          big.  If it does, then there will not be enough room for
@@ -94,7 +96,11 @@ struct thread
 
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
-    uint32_t *pagedir;                  /* Page directory. */
+    uint32_t *pagedir;
+
+    // userprog/syscall.c
+    struct file *fd_array[FD_MAX];
+                   /* Page directory. */
 #endif
 
     /* Owned by thread.c. */

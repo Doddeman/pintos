@@ -5,7 +5,7 @@
 #include <stdint.h>
 
 /* Interrupts on or off? */
-enum intr_level 
+enum intr_level
   {
     INTR_OFF,             /* Interrupts disabled. */
     INTR_ON               /* Interrupts enabled. */
@@ -24,11 +24,11 @@ struct intr_frame
     uint32_t edi;               /* Saved EDI. */
     uint32_t esi;               /* Saved ESI. */
     uint32_t ebp;               /* Saved EBP. */
-    uint32_t esp_dummy;         /* Not used. */
+    uint32_t esp_dummy;         // Not used.
     uint32_t ebx;               /* Saved EBX. */
     uint32_t edx;               /* Saved EDX. */
     uint32_t ecx;               /* Saved ECX. */
-    uint32_t eax;               /* Saved EAX. */
+    uint32_t eax;               // Saved EAX. RETURNED VALUE
     uint16_t gs, :16;           /* Saved GS segment register. */
     uint16_t fs, :16;           /* Saved FS segment register. */
     uint16_t es, :16;           /* Saved ES segment register. */
@@ -51,7 +51,7 @@ struct intr_frame
     void (*eip) (void);         /* Next instruction to execute. */
     uint16_t cs, :16;           /* Code segment for eip. */
     uint32_t eflags;            /* Saved CPU flags. */
-    void *esp;                  /* Saved stack pointer. */
+    void *esp;                  // Saved stack pointer. POINTS TO STACK
     uint16_t ss, :16;           /* Data segment for esp. */
   };
 
