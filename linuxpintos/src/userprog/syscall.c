@@ -30,7 +30,7 @@ int open (const char *file){
   int fd;
   int fd_counter;
   for(fd_counter = 2; fd_counter < FD_MAX; fd_counter++){
-    if(current_thread()->fd_array[fd_counter] == NULL){
+    if(thread_current()->fd_array[fd_counter] == NULL){
       break;
     }
   }
@@ -38,26 +38,25 @@ int open (const char *file){
     fd = -1;
   }
   else{ //assign file to fd
-    current_thread()->fd_array[fd_counter] = filesys_open(file);
+    thread_current()->fd_array[fd_counter] = filesys_open(file);
     fd = fd_counter;
   }
   //check if file opened
-  if(current_thread()->fd_array[fd_counter] == NULL){
+  if(thread_current()->fd_array[fd_counter] == NULL){
     fd = -1;
   }
   return fd;
 }
 
 void close(int fd){
-  struct file * file = current_thread()->fd_array[fd];
+  struct file * file = thread_current()->fd_array[fd];
   file_close(file);
-  current_thread()->fd_array[fd] = NULL;
+  thread_current()->fd_array[fd] = NULL;
 }
 
 int read (int fd, void *buffer, unsigned size){
   off_t bytes;
-  struct file * file = current_thread()->fd_array[fd];
-  bytes = file_read(file, buffer, size);
+  struct file * file = thread_current()->fd_array[fd];
 
   if(fd == STDIN_FILENO){ //if STDIN
     int input;
@@ -71,30 +70,32 @@ int read (int fd, void *buffer, unsigned size){
     return -1;
   }
   else{
+    bytes = file_read(file, buffer, size);
     return bytes;
   }
 }
 
 int write (int fd, const void *buffer, unsigned size){
   off_t bytes;
-  struct file * file = current_thread()->fd_array[fd];
-  bytes = file_write (file, buffer, size);
+  struct file * file = thread_current()->fd_array[fd];
 
   if(fd == STDOUT_FILENO){
     putbuf(buffer, size);
+    return size;
   }
 
-  if(file->deny_write){ //if could not write
+  if(file == NULL){ //if could not write
     return -1;
   }
-  else{
+  else{ //write to file and return bytes written
+    bytes = file_write (file, buffer, size);
     return bytes;
   }
 
 }
 
 void exit (int status){
-  printf("Exiting thread %s\n",current_thread->name);
+  printf("Exiting thread %s\n",thread_current()->name);
   printf("Exit status: %d\n",status);
   thread_exit();
 }
@@ -108,43 +109,50 @@ syscall_handler (struct intr_frame *f UNUSED)
 
   switch (*stackptr) {
     case SYS_HALT:
-      printf ("halter\n");
+    {
       halt();
       break;
+    }
     case SYS_CREATE:
-      printf("creater\n");
+    {
       const char *file = stackptr[1];
       unsigned initial_size = stackptr[2];
-      create(file, initial_size);
+      f->eax = create(file, initial_size);
       break;
+    }
     case SYS_OPEN:
-      printf("opener\n");
+    {
       const char *file = stackptr[1];
-      open(file);
+      f->eax = open(file);
       break;
+    }
     case SYS_CLOSE:
-      printf("closer\n");
+    {
       int fd = stackptr[1];
       close(fd);
       break;
+    }
     case SYS_READ:
-      printf("reader\n");
+    {
       int fd = stackptr[1];
       void * buffer = stackptr[2];
       unsigned size = stackptr[3];
-      read(fd, buffer, size);
+      f->eax = read(fd, buffer, size);
       break;
+    }
     case SYS_WRITE:
-      printf("writer\n");
+    {
       int fd = stackptr[1];
       const void * buffer = stackptr[2];
       unsigned size = stackptr[3];
-      write(fd, buffer, size);
+      f->eax = write(fd, buffer, size);
       break;
+    }
     case SYS_EXIT:
-      printf("exiter\n");
+    {
+      int status = stackptr[1];
+      exit(status);
       break;
-
+    }
   }
-
 }
