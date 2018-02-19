@@ -11,7 +11,7 @@
 
 static void syscall_handler (struct intr_frame *);
 
-static bool DEBUG = true;
+static bool DEBUG = false;
 
 void
 syscall_init (void)
