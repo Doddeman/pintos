@@ -80,6 +80,9 @@ static tid_t allocate_tid (void);
 
    It is not safe to call thread_current() until this function
    finishes. */
+
+static struct list sleep_list; //lab2
+
 void
 thread_init (void)
 {
@@ -87,6 +90,7 @@ thread_init (void)
 
   lock_init (&tid_lock);
   list_init (&ready_list);
+  list_init (&sleep_list); //lab2
 
   /* Set up a thread structure for the running thread. */
   initial_thread = running_thread ();
@@ -288,7 +292,7 @@ thread_exit (void)
   NOT_REACHED ();
 }
 
-/* Yields the CPU.  The current thread is not put to sleep and
+  /* Yields the CPU.  The current thread is not put to sleep and
    may be scheduled again immediately at the scheduler's whim. */
 void
 thread_yield (void)
