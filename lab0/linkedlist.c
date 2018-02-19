@@ -70,6 +70,7 @@ int main( int argc, char ** argv)
 {
   node * root;
   root = malloc(sizeof(node));
+  //struct node root; //no dynamic memory allocation. no memory must be freed
   root->value = -1; /* This value is always ignored */
   root->next = NULL;
 

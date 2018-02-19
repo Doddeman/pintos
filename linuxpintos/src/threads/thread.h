@@ -5,7 +5,7 @@
 #include <list.h>
 #include <stdint.h>
 
-#define FD_MAX 130
+#define FD_MAX 128
 
 /* States in a thread's life cycle. */
 enum thread_status
