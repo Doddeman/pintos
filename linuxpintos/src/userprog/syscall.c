@@ -11,6 +11,8 @@
 
 static void syscall_handler (struct intr_frame *);
 
+static bool DEBUG = true;
+
 void
 syscall_init (void)
 {
@@ -27,9 +29,10 @@ bool create (const char *file, unsigned initial_size){
 }
 
 int open (const char *file){
+  if(DEBUG) printf("s: %d\n", __LINE__);
   int fd;
   int fd_counter;
-  for(fd_counter = 2; fd_counter < FD_MAX; fd_counter++){
+  for(fd_counter = 0; fd_counter < FD_MAX; fd_counter++){
     if(thread_current()->fd_array[fd_counter] == NULL){
       break;
     }
@@ -39,7 +42,7 @@ int open (const char *file){
   }
   else{ //assign file to fd
     thread_current()->fd_array[fd_counter] = filesys_open(file);
-    fd = fd_counter;
+    fd = fd_counter + 2; //+2 to avoid fd = STDIN or STDIOUT
   }
   //check if file opened
   if(thread_current()->fd_array[fd_counter] == NULL){
@@ -49,23 +52,27 @@ int open (const char *file){
 }
 
 void close(int fd){
-  struct file * file = thread_current()->fd_array[fd];
-  file_close(file);
-  thread_current()->fd_array[fd] = NULL;
+  if(DEBUG) printf("s: %d\n", __LINE__);
+    struct file * file = thread_current()->fd_array[fd-2];
+    file_close(file);
+    thread_current()->fd_array[fd-2] = NULL;
 }
 
 int read (int fd, void *buffer, unsigned size){
+  if(DEBUG) printf("fd: %d line %d\n", fd, __LINE__);
   off_t bytes;
-  struct file * file = thread_current()->fd_array[fd];
 
-  if(fd == STDIN_FILENO){ //if STDIN
+  if(fd == STDIN_FILENO){ //if STDIN (0)
     int input;
     for(input = size; input > 0; input--){
       input_getc();
     }
     return size;
   }
-
+  if (fd == STDOUT_FILENO){ //if STDOUT (1). should not happen
+    return -1;
+  }
+  struct file * file = thread_current()->fd_array[fd-2];
   if(file == NULL){ //does file exist?
     return -1;
   }
@@ -76,14 +83,14 @@ int read (int fd, void *buffer, unsigned size){
 }
 
 int write (int fd, const void *buffer, unsigned size){
+  if(DEBUG) printf("s: %d\n", __LINE__);
   off_t bytes;
-  struct file * file = thread_current()->fd_array[fd];
 
-  if(fd == STDOUT_FILENO){
+  if(fd == STDOUT_FILENO){ //if STDOUT (1)
     putbuf(buffer, size);
     return size;
   }
-
+  struct file * file = thread_current()->fd_array[fd-2];
   if(file == NULL){ //if could not write
     return -1;
   }
@@ -91,12 +98,18 @@ int write (int fd, const void *buffer, unsigned size){
     bytes = file_write (file, buffer, size);
     return bytes;
   }
-
 }
 
 void exit (int status){
-  printf("Exiting thread %s\n",thread_current()->name);
-  printf("Exit status: %d\n",status);
+  //printf("Exiting thread %s\n",thread_current()->name);
+  //printf("Exit status: %d\n",status);
+
+  //close all files
+  int i;
+  for(i = 0; i < FD_MAX; i++){
+    struct file * file = thread_current()->fd_array[i];
+    file_close(file);
+  }
   thread_exit();
 }
 
@@ -104,9 +117,6 @@ static void
 syscall_handler (struct intr_frame *f UNUSED)
 {
   int * stackptr = f->esp;
-
-  printf ("system call!\n");
-
   switch (*stackptr) {
     case SYS_HALT:
     {
@@ -154,7 +164,5 @@ syscall_handler (struct intr_frame *f UNUSED)
       exit(status);
       break;
     }
-
   }
-
 }
