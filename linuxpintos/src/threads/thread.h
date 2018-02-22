@@ -5,7 +5,9 @@
 #include <list.h>
 #include <stdint.h>
 
-#define FD_MAX 128
+#define FD_MAX 128 //lab1
+
+struct list sleep_list; //lab2
 
 /* States in a thread's life cycle. */
 enum thread_status

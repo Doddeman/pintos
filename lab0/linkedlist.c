@@ -70,21 +70,18 @@ int main( int argc, char ** argv)
 {
   node * root;
   root = malloc(sizeof(node));
+  //struct node root; //no dynamic memory allocation. no memory must be freed
   root->value = -1; /* This value is always ignored */
   root->next = NULL;
 
-  prepend(root, 3);
-  append(root, 5);
-  append(root, 1);
-  append(root, 20);
-  input_sorted(root, 4);
+  prepend(root, 6);
+  append(root, 8);
+  input_sorted(root, 7);
   clear(root);
-  prepend(root, 3);
   append(root, 5);
-  append(root, 1);
-  append(root, 20);
+  prepend(root, 3);
   input_sorted(root, 4);
+
 
   print(root);
-
 }

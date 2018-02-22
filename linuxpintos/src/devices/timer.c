@@ -10,6 +10,8 @@
 
 /* See [8254] for hardware details of the 8254 timer chip. */
 
+static bool DEBUG = true;
+
 #if TIMER_FREQ < 19
 #error 8254 timer requires TIMER_FREQ >= 19
 #endif
@@ -94,25 +96,48 @@ timer_elapsed (int64_t then)
 
 /* Suspends execution for approximately TICKS timer ticks. */
 void
-timer_sleep (int64_t ticks)
-{
+timer_sleep (int64_t ticks){
   int64_t start = timer_ticks ();
-
   ASSERT (intr_get_level () == INTR_ON);
 
-  //set old level and disable interrupts
+  //get old_level and disable interrupts
   enum intr_level old_level = intr_disable();
-
   //make thread sleep from start to ticks
   thread_current()->sleep_until_tick = start + ticks;
-
   //push to sleep list
-  //list_push_back (sleep_list, thread_current()->elem);
-
+  list_push_back (&sleep_list, &thread_current()->elem);
+  //insert ordered to sleep_list
+  //list_insert_ordered (&sleep_list, &thread_current()->elem,
+  //                     list_less_func *less, void *aux)
   //make thread sleep
   thread_block();
-
   //Go back to previous interrup level
+  intr_set_level(old_level);
+}
+
+void
+awake_the_sleepers(){
+
+  struct list_elem * current = list_begin(&sleep_list);
+  struct list_elem * temp;
+  struct thread * elem_thread;
+
+  enum intr_level old_level = intr_disable();
+  //if(!list_empty(&sleep_list)){
+    while(!list_empty(&sleep_list) && current != list_end(&sleep_list)){
+      temp = current;
+      elem_thread = list_entry(current, struct thread, elem);
+
+      if(DEBUG) printf("%s status %d\n", elem_thread->name, elem_thread->status);
+      if(timer_ticks() >= elem_thread->sleep_until_tick){
+        list_remove(temp);
+        thread_unblock(elem_thread); //awaken
+
+        //list_push_back(&ready_list, temp); //??
+      }
+      current = list_next(current);
+    }
+  //}
   intr_set_level(old_level);
 }
 
@@ -150,6 +175,7 @@ timer_interrupt (struct intr_frame *args UNUSED)
 {
   ticks++;
   thread_tick ();
+  awake_the_sleepers();
 }
 
 /* Returns true if LOOPS iterations waits for more than one timer

@@ -103,13 +103,6 @@ int write (int fd, const void *buffer, unsigned size){
 void exit (int status){
   //printf("Exiting thread %s\n",thread_current()->name);
   //printf("Exit status: %d\n",status);
-
-  //close all files
-  int i;
-  for(i = 0; i < FD_MAX; i++){
-    struct file * file = thread_current()->fd_array[i];
-    file_close(file);
-  }
   thread_exit();
 }
 

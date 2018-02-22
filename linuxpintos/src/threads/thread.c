@@ -81,8 +81,6 @@ static tid_t allocate_tid (void);
    It is not safe to call thread_current() until this function
    finishes. */
 
-static struct list sleep_list; //lab2
-
 void
 thread_init (void)
 {
@@ -281,6 +279,12 @@ thread_exit (void)
   ASSERT (!intr_context ());
 
 #ifdef USERPROG
+//close all files
+int i;
+for(i = 0; i < FD_MAX; i++){
+  struct file * file = thread_current()->fd_array[i];
+  file_close(file);
+}
   process_exit ();
 #endif
 
