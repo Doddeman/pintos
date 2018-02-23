@@ -277,6 +277,12 @@ thread_exit (void)
   ASSERT (!intr_context ());
 
 #ifdef USERPROG
+//close all files
+int i;
+for(i = 0; i < FD_MAX; i++){
+  struct file * file = thread_current()->fd_array[i];
+  file_close(file);
+}
   process_exit ();
 #endif
 
