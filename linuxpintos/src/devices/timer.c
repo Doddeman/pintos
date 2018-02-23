@@ -10,7 +10,7 @@
 
 /* See [8254] for hardware details of the 8254 timer chip. */
 
-static bool DEBUG = true;
+static bool DEBUG = false;
 
 #if TIMER_FREQ < 19
 #error 8254 timer requires TIMER_FREQ >= 19
@@ -123,23 +123,19 @@ awake_the_sleepers(){
   struct thread * elem_thread;
 
   enum intr_level old_level = intr_disable();
-  //if(!list_empty(&sleep_list)){
-    //if(DEBUG) printf("Sleeplist: \n\n");
+    if(DEBUG) printf("Sleeplist: \n\n");
     while(!list_empty(&sleep_list) && current != list_end(&sleep_list)){
       temp = current;
       elem_thread = list_entry(current, struct thread, sleep_elem);
-
-      if(DEBUG) printf("%s status %d\n", elem_thread->name, elem_thread->status);
-      if(elem_thread->status == THREAD_BLOCKED && \
-        timer_ticks() >= elem_thread->sleep_until_tick){
+      if(DEBUG) printf("%s status %d\n",\
+      elem_thread->name, elem_thread->status);
+      if(timer_ticks() >= elem_thread->sleep_until_tick){
         list_remove(temp);
         thread_unblock(elem_thread); //awaken
-
         //list_push_back(&ready_list, temp); //??
       }
       current = list_next(current);
     }
-  //}
   intr_set_level(old_level);
 }
 
