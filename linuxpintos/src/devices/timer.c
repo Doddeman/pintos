@@ -105,7 +105,7 @@ timer_sleep (int64_t ticks){
   //make thread sleep from start to ticks
   thread_current()->sleep_until_tick = start + ticks;
   //push to sleep list
-  list_push_back (&sleep_list, &thread_current()->elem);
+  list_push_back (&sleep_list, &thread_current()->sleep_elem);
   //insert ordered to sleep_list
   //list_insert_ordered (&sleep_list, &thread_current()->elem,
   //                     list_less_func *less, void *aux)
@@ -124,12 +124,14 @@ awake_the_sleepers(){
 
   enum intr_level old_level = intr_disable();
   //if(!list_empty(&sleep_list)){
+    //if(DEBUG) printf("Sleeplist: \n\n");
     while(!list_empty(&sleep_list) && current != list_end(&sleep_list)){
       temp = current;
-      elem_thread = list_entry(current, struct thread, elem);
+      elem_thread = list_entry(current, struct thread, sleep_elem);
 
       if(DEBUG) printf("%s status %d\n", elem_thread->name, elem_thread->status);
-      if(timer_ticks() >= elem_thread->sleep_until_tick){
+      if(elem_thread->status == THREAD_BLOCKED && \
+        timer_ticks() >= elem_thread->sleep_until_tick){
         list_remove(temp);
         thread_unblock(elem_thread); //awaken
 
