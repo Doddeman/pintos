@@ -100,11 +100,11 @@ struct thread
 
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
-    uint32_t *pagedir;
+    uint32_t *pagedir; /* Page directory. */
 
     // userprog/syscall.c
-    struct file *fd_array[FD_MAX];
-                   /* Page directory. */
+    struct file *fd_array[FD_MAX]; //lab1
+
 #endif
 
     /* Owned by thread.c. */
