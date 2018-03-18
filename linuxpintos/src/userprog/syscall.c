@@ -8,6 +8,7 @@
 #include "filesys/file.h"
 #include "devices/input.h"
 #include "lib/kernel/stdio.h"
+//#include process.c
 
 static void syscall_handler (struct intr_frame *);
 
@@ -100,10 +101,33 @@ int write (int fd, const void *buffer, unsigned size){
   }
 }
 
+pid_t exec(const char * cmd_line){
+  /*The first word of the string cmd_line
+   is a file name, the rest are the
+   arguments to the program. Spawn a new child
+   process that loads the file and executes it.
+   If the child process could load and start
+   executing the file then return the process ID
+   (PID) of the child, return -1 otherwise
+*/
+
+  pid_t child = process_execute(cmd_line);
+  if(child){
+    return child;
+  }
+  else{
+    return -1;
+  }
+}
+
 void exit (int status){
-  //printf("Exiting thread %s\n",thread_current()->name);
-  //printf("Exit status: %d\n",status);
+  printf("Exiting thread %s\n",thread_current()->name);
+  printf("Exit status: %d\n",status);
   thread_exit();
+}
+
+int wait(pid_t pid){
+
 }
 
 static void

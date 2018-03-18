@@ -279,7 +279,7 @@ thread_exit (void)
   ASSERT (!intr_context ());
 
 #ifdef USERPROG
-//close all files
+//close all files. lab1
 int i;
 for(i = 0; i < FD_MAX; i++){
   struct file * file = thread_current()->fd_array[i];
