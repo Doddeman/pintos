@@ -17,6 +17,7 @@
 #include "threads/palloc.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
+#include "threads/malloc.h"
 
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
@@ -38,19 +39,48 @@ process_execute (const char *file_name)
     return TID_ERROR;
   strlcpy (fn_copy, file_name, PGSIZE);
 
+
+  /*Lab3 start */
+  //struct with info of child known to parent
+  struct report_card *child_status = malloc(sizeof(struct report_card));
+
+  child_status->parent = thread_current();
+  child_status->file_name = fn_copy;
+  child_status->orphan = false;
+  //child_status->parent_been_waiting = false;
+  child_status->dead = false;
+
+  //Initiate semaphore to make process wait until child finished loading file
+  sema_init(&child_status->sema, 0);
+
   /* Create a new thread to execute FILE_NAME. */
-  tid = thread_create (file_name, PRI_DEFAULT, start_process, fn_copy);
-  if (tid == TID_ERROR)
-    palloc_free_page (fn_copy);
+  tid = thread_create (file_name, PRI_DEFAULT, start_process, (void*)&child_status);
+
+  sema_down(&child_status->sema);
+  if (tid == TID_ERROR){
+    free(child_status);
+  }
+  if (!child_status->load_success){
+    tid = TID_ERROR;
+  }
+  else{
+    list_push_back (&thread_current()->list_of_children, &child_status->child_elem);
+  }
+  /*Lab3 end*/
+
+  //palloc_free_page (fn_copy);
   return tid;
 }
 
 /* A thread function that loads a user process and starts it
    running. */
 static void
-start_process (void *file_name_)
+start_process (void *child_status)
 {
-  char *file_name = file_name_;
+  /*Start Lab3*/
+  struct report_card *child_status = (struct report_card*) child_status;
+  /*End Lab3*/
+  char *file_name = &child_status->file_name;
   struct intr_frame if_;
   bool success;
 
@@ -61,11 +91,18 @@ start_process (void *file_name_)
   if_.eflags = FLAG_IF | FLAG_MBS;
   success = load (file_name, &if_.eip, &if_.esp);
 
-  /* If load failed, quit. */
+  /*Start Lab3*/
+  child_status->load_success = success;
+  thread_current()->report_card = child_status;
+  child_status->tid = thread_current()->tid;
+  sema_up(&child_status->sema);
   palloc_free_page (file_name);
-  if (!success)
-    thread_exit ();
+  /*End Lab3*/
 
+  /* If load failed, quit. */
+  if (!success){
+    thread_exit ();
+  }
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
      threads/intr-stubs.S).  Because intr_exit takes all of its
@@ -478,7 +515,7 @@ setup_stack (void **esp)
     {
       success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
       if (success)
-        *esp = PHYS_BASE - 12;
+        *esp = PHYS_BASE - 12; //why -12? can't remember
       else
         palloc_free_page (kpage);
     }

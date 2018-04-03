@@ -279,13 +279,29 @@ thread_exit (void)
   ASSERT (!intr_context ());
 
 #ifdef USERPROG
-//close all files. lab1
-int i;
-for(i = 0; i < FD_MAX; i++){
-  struct file * file = thread_current()->fd_array[i];
-  file_close(file);
-}
+  /*close all files. Lab1 start*/
+  int i;
+  for(i = 0; i < FD_MAX; i++){
+    struct file * file = thread_current()->fd_array[i];
+    file_close(file);
+  }
+  /*Lab1 end*/
   process_exit ();
+
+  /*start Lab3*/
+  enum intr_level old_level = intr_disable();
+  // Free memory
+  struct list * children = thread_current()->list_of_children;
+  	while (!list_empty (children)) {
+      struct list_elem *el = list_pop_front(children);
+      struct report_card *rc = list_entry(el, struct report_card, child_elem);
+      rc->orphan = true;
+      if(rc->dead){
+        free(rc);
+      }
+    }
+  intr_set_level(old_level);
+  /*end Lab3*/
 #endif
 
   /* Just set our status to dying and schedule another process.

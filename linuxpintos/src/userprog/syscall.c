@@ -9,6 +9,9 @@
 #include "devices/input.h"
 #include "lib/kernel/stdio.h"
 //#include process.c
+/*Lab3 start*/
+#include "userprog/pagedir.h"
+/*Lab3 end*/
 
 static void syscall_handler (struct intr_frame *);
 
@@ -30,7 +33,6 @@ bool create (const char *file, unsigned initial_size){
 }
 
 int open (const char *file){
-  if(DEBUG) printf("s: %d\n", __LINE__);
   int fd;
   int fd_counter;
   for(fd_counter = 0; fd_counter < FD_MAX; fd_counter++){
@@ -53,14 +55,12 @@ int open (const char *file){
 }
 
 void close(int fd){
-  if(DEBUG) printf("s: %d\n", __LINE__);
-    struct file * file = thread_current()->fd_array[fd-2];
-    file_close(file);
-    thread_current()->fd_array[fd-2] = NULL;
+  struct file * file = thread_current()->fd_array[fd-2];
+  file_close(file);
+  thread_current()->fd_array[fd-2] = NULL;
 }
 
 int read (int fd, void *buffer, unsigned size){
-  if(DEBUG) printf("fd: %d line %d\n", fd, __LINE__);
   off_t bytes;
 
   if(fd == STDIN_FILENO){ //if STDIN (0)
@@ -84,7 +84,6 @@ int read (int fd, void *buffer, unsigned size){
 }
 
 int write (int fd, const void *buffer, unsigned size){
-  if(DEBUG) printf("s: %d\n", __LINE__);
   off_t bytes;
 
   if(fd == STDOUT_FILENO){ //if STDOUT (1)
@@ -101,28 +100,24 @@ int write (int fd, const void *buffer, unsigned size){
   }
 }
 
+//will return -1 if TID_ERROR
 pid_t exec(const char * cmd_line){
-  /*The first word of the string cmd_line
-   is a file name, the rest are the
-   arguments to the program. Spawn a new child
-   process that loads the file and executes it.
-   If the child process could load and start
-   executing the file then return the process ID
-   (PID) of the child, return -1 otherwise
-*/
-
-  pid_t child = process_execute(cmd_line);
-  if(child){
-    return child;
+  if (pagedir_get_page(thread_current()->pagedir, cmd_line)){
+    pid_t child_pid = process_execute(cmd_line);
   }
   else{
-    return -1;
+    pid_t child_pid = -1;
   }
+  if(DEBUG) printf("final exec child_pid: %d\n", child_pid);
+  return child_pid;
 }
 
 void exit (int status){
-  printf("Exiting thread %s\n",thread_current()->name);
-  printf("Exit status: %d\n",status);
+  if(DEBUG) printf("Exiting thread %s\n",thread_name());
+  if(DEBUG) printf("Exit status: %d\n",status);
+
+  thread_current()->report_card->exit_status = status;
+
   thread_exit();
 }
 
@@ -175,10 +170,22 @@ syscall_handler (struct intr_frame *f UNUSED)
       f->eax = write(fd, buffer, size);
       break;
     }
+    case SYS_EXEC:
+    {
+      const char * cmd_line = stackptr[1];
+      f->eax = exec(cmd_line);
+      break;
+    }
     case SYS_EXIT:
     {
       int status = stackptr[1];
       exit(status);
+      break;
+    }
+    case SYS_WAIT:
+    {
+      int pid = stackptr[1];
+      f->eax = wait(pid);
       break;
     }
   }

@@ -92,23 +92,46 @@ struct thread
     char name[16];                      /* Name (for debugging purposes). */
     uint8_t *stack;                     /* Saved stack pointer. */
     int priority;                       /* Priority. */
-    int64_t sleep_until_tick;           //lab2. the tick the thread sleeps until
+    int64_t sleep_until_tick;           //Lab2. the tick the thread sleeps until
 
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
-    struct list_elem sleep_elem;
+    struct list_elem sleep_elem;        //Lab2. list elem in sleep list
+
+    /*Lab3 start*/
+    struct report_card * report_card;   //my report card for daddy
+    struct list list_of_children;       //my children's report cards
+
+    /*Lab3 end*/
 
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir; /* Page directory. */
 
     // userprog/syscall.c
-    struct file *fd_array[FD_MAX]; //lab1
+    struct file *fd_array[FD_MAX]; //Lab1
 
 #endif
 
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
+  };
+
+//Lab3
+struct report_card
+  {
+    tid_t tid;
+    struct thread * parent; //pointer to parent
+    enum thread_status status;
+    bool load_success; //successfully loaded file?
+    int exit_status;
+    const char *file_name;
+    bool orphan;
+    //bool parent_been_waiting;
+    bool dead;
+    //struct lock lock;
+    struct semaphore sema;
+    struct list_elem child_elem;
   };
 
 /* If false (default), use round-robin scheduler.
