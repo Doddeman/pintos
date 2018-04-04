@@ -289,12 +289,26 @@ thread_exit (void)
   process_exit ();
 
   /*start Lab3*/
+  //if current thread's daddy is dead
+  sema_down(&thread_current()->report_card->sema);
+  if(thread_current()->report_card->orphan) {
+    sema_up(&thread_current()->report_card->sema);
+    if(DEBUG) printf("%s\n", "thread_exit() is orphan");
+    free(thread_current()->report_card);
+  }
+  else { //Probably weird and incorrect
+    if(DEBUG) printf("%s\n", "thread_exit() no orphan, parent sleep");
+    thread_current()->report_card->dead = true;
+    //lock_release(&thread_current()->parent_relation->lock);
+    sema_up(&thread_current()->report_card->sema);
+  }
+
+  //Free memory for all info of children of current thread
   enum intr_level old_level = intr_disable();
-  // Free memory
   struct list * children = thread_current()->list_of_children;
   	while (!list_empty (children)) {
-      struct list_elem *el = list_pop_front(children);
-      struct report_card *rc = list_entry(el, struct report_card, child_elem);
+      struct list_elem *elem = list_pop_front(children);
+      struct report_card *rc = list_entry(elem, struct report_card, child_elem);
       rc->orphan = true;
       if(rc->dead){
         free(rc);
@@ -304,8 +318,9 @@ thread_exit (void)
   /*end Lab3*/
 #endif
 
-  /* Just set our status to dying and schedule another process.
-     We will be destroyed during the call to schedule_tail(). */
+  /* Just set current thread's status to dying and schedule
+     another process. It will be destroyed during the call
+     to schedule_tail(). */
   intr_disable ();
   thread_current ()->status = THREAD_DYING;
   schedule ();

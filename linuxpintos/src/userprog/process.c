@@ -120,13 +120,21 @@ start_process (void *child_status)
    been successfully called for the given TID, returns -1
    immediately, without waiting.
 
-   This function will be implemented in problem 2-2.  For now, it
-   does nothing. */
+This function will be implemented in Lab3 . */
 int
-process_wait (tid_t child_tid UNUSED)
+process_wait (tid_t child_tid)
 {
-  //while(true){
-  //}
+  struct list * children = thread_current()->list_of_children;
+  struct list_elem *elem = list_begin(children);
+    while (!list_empty (children)) {
+      struct list_elem *elem = list_pop_front(children);
+      struct report_card *rc = list_entry(elem, struct report_card, child_elem);
+      rc->orphan = true;
+      if(rc->dead){
+        free(rc);
+      }
+    }
+
   return -1;
 }
 

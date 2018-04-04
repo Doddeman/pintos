@@ -122,7 +122,10 @@ void exit (int status){
 }
 
 int wait(pid_t pid){
-
+  if(DEBUG) printf("wait pid: %d\n", pid);
+  int exit_status = process_wait(pid);
+  if(DEBUG) printf("wait exit_status: %d\n", exit_status);
+  return exit_status;
 }
 
 static void
