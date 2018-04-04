@@ -106,9 +106,6 @@ timer_sleep (int64_t ticks){
   thread_current()->sleep_until_tick = start + ticks;
   //push to sleep list
   list_push_back (&sleep_list, &thread_current()->sleep_elem);
-  //insert ordered to sleep_list
-  //list_insert_ordered (&sleep_list, &thread_current()->elem,
-  //                     list_less_func *less, void *aux)
   //make thread sleep
   thread_block();
   //Go back to previous interrup level
@@ -132,7 +129,6 @@ awake_the_sleepers(){
       if(timer_ticks() >= elem_thread->sleep_until_tick){
         list_remove(temp);
         thread_unblock(elem_thread); //awaken
-        //list_push_back(&ready_list, temp); //??
       }
       current = list_next(current);
     }
