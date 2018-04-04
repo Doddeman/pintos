@@ -46,12 +46,14 @@ process_execute (const char *file_name)
 
   child_status->parent = thread_current();
   child_status->file_name = fn_copy;
-  child_status->orphan = false;
-  //child_status->parent_been_waiting = false;
   child_status->dead = false;
+  child_status->orphan = false;
+  child_status->parent_waited_already = false;
 
   //Initiate semaphore to make process wait until child finished loading file
   sema_init(&child_status->sema, 0);
+  //
+  sema_init(&child_status->wait_sema, 0);
 
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (file_name, PRI_DEFAULT, start_process, (void*)&child_status);
@@ -78,9 +80,9 @@ static void
 start_process (void *child_status)
 {
   /*Start Lab3*/
-  struct report_card *child_status = (struct report_card*) child_status;
+  struct report_card *cs = (struct report_card*) child_status;
   /*End Lab3*/
-  char *file_name = &child_status->file_name;
+  char *file_name = &cs->file_name;
   struct intr_frame if_;
   bool success;
 
@@ -92,10 +94,10 @@ start_process (void *child_status)
   success = load (file_name, &if_.eip, &if_.esp);
 
   /*Start Lab3*/
-  child_status->load_success = success;
-  thread_current()->report_card = child_status;
-  child_status->tid = thread_current()->tid;
-  sema_up(&child_status->sema);
+  cs->load_success = success;
+  thread_current()->report_card = cs;
+  cs->tid = thread_current()->tid;
+  sema_up(&cs->sema);
   palloc_free_page (file_name);
   /*End Lab3*/
 
@@ -124,17 +126,25 @@ This function will be implemented in Lab3 . */
 int
 process_wait (tid_t child_tid)
 {
-  struct list * children = thread_current()->list_of_children;
-  struct list_elem *elem = list_begin(children);
-    while (!list_empty (children)) {
-      struct list_elem *elem = list_pop_front(children);
+  //loop through all children until tid matches
+  struct list * children = &thread_current()->list_of_children;
+  struct list_elem *elem = list_begin(&children);
+    while (elem != list_end(&children)) {
       struct report_card *rc = list_entry(elem, struct report_card, child_elem);
-      rc->orphan = true;
-      if(rc->dead){
-        free(rc);
+      if(DEBUG) printf("loop tid: %d\n", rc->tid);
+      if(rc->tid == child_tid){ //match
+        sema_down(&rc->sema); //upped in thread_exit()
+        if(DEBUG) printf("matching tid\n");
+        if(rc->parent_waited_already){
+          return -1;
+        }
+        else{
+          rc->parent_waited_already = true;
+          return rc->exit_status;
+        }
       }
+      elem = list_next(elem);
     }
-
   return -1;
 }
 
@@ -242,7 +252,7 @@ struct Elf32_Phdr
 #define PF_W 2          /* Writable. */
 #define PF_R 4          /* Readable. */
 
-static bool setup_stack (void **esp);
+static bool setup_stack (void **esp, char *input);
 static bool validate_segment (const struct Elf32_Phdr *, struct file *);
 static bool load_segment (struct file *file, off_t ofs, uint8_t *upage,
                           uint32_t read_bytes, uint32_t zero_bytes,
@@ -269,14 +279,14 @@ load (const char *file_name, void (**eip) (void), void **esp)
   process_activate ();
 
   /* Set up stack. */
-  if (!setup_stack (esp)){
+  if (!setup_stack (esp, file_name)){
     goto done;
   }
 
    /* Uncomment the following line to print some debug
      information. This will be useful when you debug the program
      stack.*/
-/*#define STACK_DEBUG*/
+#define STACK_DEBUG
 
 #ifdef STACK_DEBUG
   printf("*esp is %p\nstack contents:\n", *esp);
@@ -513,7 +523,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 /* Create a minimal stack by mapping a zeroed page at the top of
    user virtual memory. */
 static bool
-setup_stack (void **esp)
+setup_stack (void **esp, char *input)
 {
   uint8_t *kpage;
   bool success = false;
@@ -522,10 +532,27 @@ setup_stack (void **esp)
   if (kpage != NULL)
     {
       success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
-      if (success)
-        *esp = PHYS_BASE - 12; //why -12? can't remember
-      else
+      if (success){
+        /*start lab3*/
+        *esp = PHYS_BASE;
+        char *argv[32];
+        int argc = 0;
+        char *token, *save_ptr;
+
+        for (token = strtok_r (input, " ", &save_ptr); token != NULL;
+             token = strtok_r (NULL, " ", &save_ptr))
+             {
+               *esp -= strlen(token) + 1;
+                memcpy(*esp, token, strlen(token) + 1);
+                argv[argc++] = (char *) *esp;
+             }
+
+
+        /*end lab3*/
+      }
+      else{
         palloc_free_page (kpage);
+      }
     }
   return success;
 }

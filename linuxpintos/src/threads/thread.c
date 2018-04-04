@@ -268,7 +268,7 @@ thread_current (void)
 tid_t
 thread_tid (void)
 {
-  return thread_current ()->tid;
+  return thread_current()->tid;
 }
 
 /* Deschedules the current thread and destroys it.  Never
@@ -289,23 +289,27 @@ thread_exit (void)
   process_exit ();
 
   /*start Lab3*/
-  //if current thread's daddy is dead
+  //For process_wait() when parent waits for child
+  if(!thread_current()->report_card->orphan){
+    sema_up(&thread_current()->report_card->wait_sema);
+  }
+
+  //CASE 3: if current thread's daddy is dead
   sema_down(&thread_current()->report_card->sema);
   if(thread_current()->report_card->orphan) {
     sema_up(&thread_current()->report_card->sema);
     if(DEBUG) printf("%s\n", "thread_exit() is orphan");
     free(thread_current()->report_card);
   }
-  else { //Probably weird and incorrect
+  else { //CASE 4: Probably weird and incorrect
     if(DEBUG) printf("%s\n", "thread_exit() no orphan, parent sleep");
     thread_current()->report_card->dead = true;
     //lock_release(&thread_current()->parent_relation->lock);
     sema_up(&thread_current()->report_card->sema);
   }
-
-  //Free memory for all info of children of current thread
+  //Free memory for all info of dead children of current thread
   enum intr_level old_level = intr_disable();
-  struct list * children = thread_current()->list_of_children;
+  struct list * children = &thread_current()->list_of_children;
   	while (!list_empty (children)) {
       struct list_elem *elem = list_pop_front(children);
       struct report_card *rc = list_entry(elem, struct report_card, child_elem);

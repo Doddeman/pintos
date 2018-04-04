@@ -4,8 +4,11 @@
 #include <debug.h>
 #include <list.h>
 #include <stdint.h>
+#include "threads/synch.h" //Lab3
 
 #define FD_MAX 128 //lab1
+
+static bool DEBUG = true;
 
 struct list sleep_list; //lab2
 
@@ -122,16 +125,17 @@ struct report_card
   {
     tid_t tid;
     struct thread * parent; //pointer to parent
+    bool dead;
+    bool orphan;
+    bool parent_waited_already;
+    //struct lock lock;
+    struct semaphore sema;
+    struct semaphore wait_sema;	// Enables parent to wait for child
+    struct list_elem child_elem;
     enum thread_status status;
     bool load_success; //successfully loaded file?
     int exit_status;
     const char *file_name;
-    bool orphan;
-    //bool parent_been_waiting;
-    bool dead;
-    //struct lock lock;
-    struct semaphore sema;
-    struct list_elem child_elem;
   };
 
 /* If false (default), use round-robin scheduler.

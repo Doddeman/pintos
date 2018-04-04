@@ -11,11 +11,13 @@
 //#include process.c
 /*Lab3 start*/
 #include "userprog/pagedir.h"
+#include "lib/string.h"
+#include "threads/vaddr.h"
 /*Lab3 end*/
 
 static void syscall_handler (struct intr_frame *);
 
-static bool DEBUG = true;
+//static bool DEBUG = true;
 
 void
 syscall_init (void)
@@ -101,12 +103,13 @@ int write (int fd, const void *buffer, unsigned size){
 }
 
 //will return -1 if TID_ERROR
-pid_t exec(const char * cmd_line){
+int exec(const char * cmd_line){
+  int child_pid;
   if (pagedir_get_page(thread_current()->pagedir, cmd_line)){
-    pid_t child_pid = process_execute(cmd_line);
+    child_pid = process_execute(cmd_line);
   }
   else{
-    pid_t child_pid = -1;
+    child_pid = -1;
   }
   if(DEBUG) printf("final exec child_pid: %d\n", child_pid);
   return child_pid;
@@ -115,13 +118,11 @@ pid_t exec(const char * cmd_line){
 void exit (int status){
   if(DEBUG) printf("Exiting thread %s\n",thread_name());
   if(DEBUG) printf("Exit status: %d\n",status);
-
   thread_current()->report_card->exit_status = status;
-
   thread_exit();
 }
 
-int wait(pid_t pid){
+int wait(int pid){
   if(DEBUG) printf("wait pid: %d\n", pid);
   int exit_status = process_wait(pid);
   if(DEBUG) printf("wait exit_status: %d\n", exit_status);
