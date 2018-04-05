@@ -6,11 +6,11 @@
 #include <stdint.h>
 #include "threads/synch.h" //Lab3
 
-#define FD_MAX 128 //lab1
+#define FD_MAX 128 //Lab1
 
 static bool DEBUG = true;
 
-struct list sleep_list; //lab2
+struct list sleep_list; //Lab2
 
 /* States in a thread's life cycle. */
 enum thread_status

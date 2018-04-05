@@ -20,7 +20,7 @@
 #include "threads/malloc.h"
 
 static thread_func start_process NO_RETURN;
-static bool load (const char *cmdline, void (**eip) (void), void **esp);
+static bool load (char *cmdline, void (**eip) (void), void **esp);
 
 /* Starts a new thread running a user program loaded from
    FILENAME.  The new thread may be scheduled (and may even exit)
@@ -44,6 +44,8 @@ process_execute (const char *file_name)
   //struct with info of child known to parent
   struct report_card *child_status = malloc(sizeof(struct report_card));
 
+  //child_status->load_success = true;
+
   child_status->parent = thread_current();
   child_status->file_name = fn_copy;
   child_status->dead = false;
@@ -56,18 +58,24 @@ process_execute (const char *file_name)
   sema_init(&child_status->wait_sema, 0);
 
   /* Create a new thread to execute FILE_NAME. */
-  tid = thread_create (file_name, PRI_DEFAULT, start_process, (void*)&child_status);
+  tid = thread_create (file_name, PRI_DEFAULT, start_process, child_status);
 
   sema_down(&child_status->sema);
-  if (tid == TID_ERROR){
-    free(child_status);
-  }
   if (!child_status->load_success){
     tid = TID_ERROR;
   }
-  else{
-    list_push_back (&thread_current()->list_of_children, &child_status->child_elem);
+  if (tid == TID_ERROR){
+    free(child_status);
   }
+  list_push_back (&thread_current()->list_of_children, &child_status->child_elem);
+
+/*
+  struct list_elem *el;
+  for(el = list_begin(&thread_current()->list_of_children); el != list_end(&thread_current()->list_of_children); el = list_next(el)){
+    struct report_card *rc = list_entry(el, struct report_card, child_elem);
+    if(DEBUG) printf("TEST TID: %d\n", rc->tid);
+  }
+  */
   /*Lab3 end*/
 
   //palloc_free_page (fn_copy);
@@ -82,7 +90,7 @@ start_process (void *child_status)
   /*Start Lab3*/
   struct report_card *cs = (struct report_card*) child_status;
   /*End Lab3*/
-  char *file_name = &cs->file_name;
+  char *file_name = cs->file_name;
   struct intr_frame if_;
   bool success;
 
@@ -128,10 +136,10 @@ process_wait (tid_t child_tid)
 {
   //loop through all children until tid matches
   struct list * children = &thread_current()->list_of_children;
-  struct list_elem *elem = list_begin(&children);
-    while (elem != list_end(&children)) {
+  struct list_elem *elem = list_begin(children);
+    while (elem != list_end(children)) {
       struct report_card *rc = list_entry(elem, struct report_card, child_elem);
-      if(DEBUG) printf("loop tid: %d\n", rc->tid);
+      if(DEBUG) printf("wait loop tid: %d\n", rc->tid);
       if(rc->tid == child_tid){ //match
         sema_down(&rc->sema); //upped in thread_exit()
         if(DEBUG) printf("matching tid\n");
@@ -263,7 +271,7 @@ static bool load_segment (struct file *file, off_t ofs, uint8_t *upage,
    and its initial stack pointer into *ESP.
    Returns true if successful, false otherwise. */
 bool
-load (const char *file_name, void (**eip) (void), void **esp)
+load (char *file_name, void (**eip) (void), void **esp)
 {
   struct thread *t = thread_current ();
   struct Elf32_Ehdr ehdr;
@@ -286,7 +294,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
    /* Uncomment the following line to print some debug
      information. This will be useful when you debug the program
      stack.*/
-#define STACK_DEBUG
+//#define STACK_DEBUG
 
 #ifdef STACK_DEBUG
   printf("*esp is %p\nstack contents:\n", *esp);
@@ -535,18 +543,52 @@ setup_stack (void **esp, char *input)
       if (success){
         /*start lab3*/
         *esp = PHYS_BASE;
-        char *argv[32];
+
+        char **argv = malloc(32*sizeof(char*)); //max 32 arguments
         int argc = 0;
         char *token, *save_ptr;
 
+        //loop over arguments and put them on the stack
         for (token = strtok_r (input, " ", &save_ptr); token != NULL;
              token = strtok_r (NULL, " ", &save_ptr))
              {
+               //printf("TOKEN: %s%d\n", token, argc);
+               //get pointer in the correct location to write
                *esp -= strlen(token) + 1;
-                memcpy(*esp, token, strlen(token) + 1);
-                argv[argc++] = (char *) *esp;
+               //write
+               memcpy(*esp, token, strlen(token)+1);
+               //add argument to argument vector
+               argv[argc] = *esp;
+               //increment argument count
+               argc++;
              }
+        //null pointer sentinel
+        argv[argc] = 0;
+        //word align for multiple of 4
+        int word_align = (size_t) *esp % 4;
+        if(word_align > 0){
+          *esp -= word_align;
+          memcpy(*esp, &argv[argc], word_align);
+        }
+        // Push the pointers to the args
+        int i;
+        for(i = argc; i >= 0; i--) {
+          *esp -= sizeof(char*);
+          //printf("POINTER: %s\n", *argv[i]);
+          memcpy(*esp, &argv[i], sizeof(char*));
+        }
+        // Push argv
+        void* tmp = *esp;
+        *esp -= sizeof(&tmp);
+        memcpy(*esp, &tmp, sizeof(&tmp)+1);
+        // Push argc
+        *esp -= sizeof(argc);
+        memcpy(*esp, &argc, sizeof(argc));
+        // Push fake return address
+        *esp -= sizeof(argv[argc]); // 0
+        memcpy(*esp, &argv[argc], sizeof(argv[argc]));
 
+        free(argv);
 
         /*end lab3*/
       }

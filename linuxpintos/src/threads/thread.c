@@ -88,13 +88,15 @@ thread_init (void)
 
   lock_init (&tid_lock);
   list_init (&ready_list);
-  list_init (&sleep_list); //lab2
 
   /* Set up a thread structure for the running thread. */
   initial_thread = running_thread ();
   init_thread (initial_thread, "main", PRI_DEFAULT);
   initial_thread->status = THREAD_RUNNING;
   initial_thread->tid = allocate_tid ();
+
+  list_init (&sleep_list); //Lab2
+  list_init (&initial_thread->list_of_children); //Lab3
 }
 
 /* Starts preemptive thread scheduling by enabling interrupts.
@@ -197,6 +199,8 @@ thread_create (const char *name, int priority,
   /* Add to run queue. */
   thread_unblock (t);
 
+  list_init(&t->list_of_children); //Lab3
+
   return tid;
 }
 
@@ -279,7 +283,8 @@ thread_exit (void)
   ASSERT (!intr_context ());
 
 #ifdef USERPROG
-  /*close all files. Lab1 start*/
+  /*Lab1 start*/
+  //close all files.
   int i;
   for(i = 0; i < FD_MAX; i++){
     struct file * file = thread_current()->fd_array[i];
@@ -309,10 +314,23 @@ thread_exit (void)
   }
   //Free memory for all info of dead children of current thread
   enum intr_level old_level = intr_disable();
-  struct list * children = &thread_current()->list_of_children;
-  	while (!list_empty (children)) {
-      struct list_elem *elem = list_pop_front(children);
+
+  if(DEBUG) printf("TEST TID1: %d\n", thread_current()->tid);
+  struct list_elem *el = list_begin(&thread_current()->list_of_children);
+  if(DEBUG) printf("TEST TID2: %d\n", thread_current()->report_card->parent->tid);
+  if(DEBUG) printf("TEST TID3: %d\n", thread_current()->report_card->parent->report_card->parent->tid);
+  //if(DEBUG) printf("TEST TID4: %d\n", thread_current()->report_card->parent->report_card->parent->report_card->parent->tid);
+  //for(el = list_begin(&thread_current()->list_of_children); el != list_end(&thread_current()->list_of_children); el = list_next(el)){
+    struct report_card *rc = list_entry(el, struct report_card, child_elem);
+    if(DEBUG) printf("TEST TID4: %d\n", rc->tid);
+  //}
+  //struct list * children = &thread_current()->list_of_children;
+  	while (!list_empty(&thread_current()->list_of_children)){
+      if(DEBUG) printf("HEJ1111\n");
+      struct list_elem *elem = list_pop_front(&thread_current()->list_of_children);
+      if(DEBUG) printf("HEJ2222\n");
       struct report_card *rc = list_entry(elem, struct report_card, child_elem);
+      if(DEBUG) printf("TEST TID: %d\n", rc->tid);
       rc->orphan = true;
       if(rc->dead){
         free(rc);

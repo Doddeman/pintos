@@ -15,6 +15,15 @@
 #include "threads/vaddr.h"
 /*Lab3 end*/
 
+void halt(void);
+bool create(const char *file, unsigned initial_size);
+int open(const char *file);
+void close(int fd);
+int read (int fd, void *buffer, unsigned size);
+int write (int fd, const void *buffer, unsigned size);
+int exec(const char * cmd_line);
+void exit (int status);
+int wait(int pid);
 static void syscall_handler (struct intr_frame *);
 
 //static bool DEBUG = true;
@@ -29,12 +38,12 @@ void halt(void){
   power_off();
 }
 
-bool create (const char *file, unsigned initial_size){
+bool create(const char *file, unsigned initial_size){
   bool success = filesys_create(file, initial_size);
   return success;
 }
 
-int open (const char *file){
+int open(const char *file){
   int fd;
   int fd_counter;
   for(fd_counter = 0; fd_counter < FD_MAX; fd_counter++){
@@ -62,7 +71,7 @@ void close(int fd){
   thread_current()->fd_array[fd-2] = NULL;
 }
 
-int read (int fd, void *buffer, unsigned size){
+int read(int fd, void *buffer, unsigned size){
   off_t bytes;
 
   if(fd == STDIN_FILENO){ //if STDIN (0)
@@ -104,6 +113,7 @@ int write (int fd, const void *buffer, unsigned size){
 
 //will return -1 if TID_ERROR
 int exec(const char * cmd_line){
+  //printf("HEJHEJHEJ\n");
   int child_pid;
   if (pagedir_get_page(thread_current()->pagedir, cmd_line)){
     child_pid = process_execute(cmd_line);
@@ -141,54 +151,55 @@ syscall_handler (struct intr_frame *f UNUSED)
     }
     case SYS_CREATE:
     {
-      const char *file = stackptr[1];
-      unsigned initial_size = stackptr[2];
+      const char *file = (const char*)stackptr[1];
+      unsigned initial_size = (unsigned)stackptr[2];
       f->eax = create(file, initial_size);
       break;
     }
     case SYS_OPEN:
     {
-      const char *file = stackptr[1];
+      const char *file = (const char*)stackptr[1];
       f->eax = open(file);
       break;
     }
     case SYS_CLOSE:
     {
-      int fd = stackptr[1];
+      int fd = (int)stackptr[1];
       close(fd);
       break;
     }
     case SYS_READ:
     {
-      int fd = stackptr[1];
-      void * buffer = stackptr[2];
-      unsigned size = stackptr[3];
+      int fd = (int)stackptr[1];
+      void * buffer = (void*)stackptr[2];
+      unsigned size = (unsigned)stackptr[3];
       f->eax = read(fd, buffer, size);
       break;
     }
     case SYS_WRITE:
     {
-      int fd = stackptr[1];
-      const void * buffer = stackptr[2];
-      unsigned size = stackptr[3];
+      int fd = (int)stackptr[1];
+      const void * buffer = (const void*)stackptr[2];
+      unsigned size = (unsigned)stackptr[3];
       f->eax = write(fd, buffer, size);
       break;
     }
     case SYS_EXEC:
     {
-      const char * cmd_line = stackptr[1];
+      //printf("HEYEYEYEY\n");
+      const char * cmd_line = (const char*)stackptr[1];
       f->eax = exec(cmd_line);
       break;
     }
     case SYS_EXIT:
     {
-      int status = stackptr[1];
+      int status = (int)stackptr[1];
       exit(status);
       break;
     }
     case SYS_WAIT:
     {
-      int pid = stackptr[1];
+      int pid = (int)stackptr[1];
       f->eax = wait(pid);
       break;
     }
