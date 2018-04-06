@@ -136,26 +136,35 @@ process_wait (tid_t child_tid)
 {
 
   //loop through all children until tid matches
+
+  if(DEBUG) printf("WAIT THREAD NAME + ID: %s + %d. LINE: %d\n",thread_current()->name, thread_current()->tid, __LINE__);
+
   struct list * children = &thread_current()->list_of_children;
   struct list_elem *elem = list_begin(children);
+  int count = 0;
     while (elem != list_end(children)) {
+      if(DEBUG) printf("COUNTER: %d\n", count);
       struct report_card *rc = list_entry(elem, struct report_card, child_elem);
       if(DEBUG) printf("wait loop tid: %d\n", rc->tid);
       if(rc->tid == child_tid){ //match
-        sema_down(&rc->sema); //upped in thread_exit()
         if(DEBUG) printf("matching tid\n");
+
         if(rc->parent_waited_already){
+          if(DEBUG) printf("IF: %s\n", thread_name());
           return -1;
         }
         else{
+          sema_down(&rc->wait_sema); //upped in thread_exit()
+          if(DEBUG) printf("ELSE: %s\n", thread_name());
           rc->parent_waited_already = true;
           return rc->exit_status;
         }
       }
+      count++;
       elem = list_next(elem);
     }
-    if(DEBUG) printf("EXITED WAIT LOOP\n");
-    
+     if(DEBUG) printf("EXITED WAIT LOOP\n");
+
   return -1;
 }
 
@@ -297,7 +306,7 @@ load (char *file_name, void (**eip) (void), void **esp)
    /* Uncomment the following line to print some debug
      information. This will be useful when you debug the program
      stack.*/
-#define STACK_DEBUG
+//#define STACK_DEBUG
 
 #ifdef STACK_DEBUG
   printf("*esp is %p\nstack contents:\n", *esp);

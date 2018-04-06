@@ -113,7 +113,7 @@ int write (int fd, const void *buffer, unsigned size){
 
 //will return -1 if TID_ERROR
 int exec(const char * cmd_line){
-  //printf("HEJHEJHEJ\n");
+  if(DEBUG) printf("EXEC THREAD NAME + ID: %s + %d. LINE: %d\n",thread_current()->name, thread_current()->tid, __LINE__);
   int child_pid;
   if (pagedir_get_page(thread_current()->pagedir, cmd_line)){
     child_pid = process_execute(cmd_line);
@@ -126,9 +126,12 @@ int exec(const char * cmd_line){
 }
 
 void exit (int status){
-  if(DEBUG) printf("Exiting thread %s\n",thread_name());
-  if(DEBUG) printf("Exit status: %d\n",status);
-  printf("%s: exit(%d)\n",thread_current()->name, status); //for tests
+  char *part, *save_ptr;
+  for (part = strtok_r (thread_name(), " ", &save_ptr); part != NULL;
+    part = strtok_r (NULL, " ", &save_ptr)) {
+    printf("%s: exit(%d)\n", part, status);
+    break;
+   }
   thread_current()->report_card->exit_status = status;
   thread_exit();
 }
@@ -143,8 +146,11 @@ int wait(int pid){
 static void
 syscall_handler (struct intr_frame *f UNUSED)
 {
+  //printf("MEN HALLÅ\n" );
+  printf("STACKPTR %d\n", f->esp);
   int * stackptr = f->esp;
   switch (*stackptr) {
+    printf("STACKPTR %d\n", *stackptr);
     case SYS_HALT:
     {
       halt();
@@ -187,7 +193,7 @@ syscall_handler (struct intr_frame *f UNUSED)
     }
     case SYS_EXEC:
     {
-      //printf("HEYEYEYEY\n");
+      //printf("MEN HALLÅ3\n" );
       const char * cmd_line = (const char*)stackptr[1];
       f->eax = exec(cmd_line);
       break;
