@@ -128,6 +128,7 @@ int exec(const char * cmd_line){
 void exit (int status){
   if(DEBUG) printf("Exiting thread %s\n",thread_name());
   if(DEBUG) printf("Exit status: %d\n",status);
+  printf("%s: exit(%d)\n",thread_current()->name, status); //for tests
   thread_current()->report_card->exit_status = status;
   thread_exit();
 }
