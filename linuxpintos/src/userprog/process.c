@@ -134,7 +134,7 @@ This function will be implemented in Lab3 . */
 int
 process_wait (tid_t child_tid)
 {
-  /*
+
   //loop through all children until tid matches
   struct list * children = &thread_current()->list_of_children;
   struct list_elem *elem = list_begin(children);
@@ -155,7 +155,7 @@ process_wait (tid_t child_tid)
       elem = list_next(elem);
     }
     if(DEBUG) printf("EXITED WAIT LOOP\n");
-    */
+    
   return -1;
 }
 
@@ -558,12 +558,12 @@ setup_stack (void **esp, char *input)
                //printf("TOKEN: %s%d\n", token, argc);
                //get pointer in the correct location to write
                *esp -= strlen(token) + 1;
-               //write
-               memcpy(*esp, token, strlen(token));
                //add argument to argument vector
                argv[argc] = *esp;
                //increment argument count
                argc++;
+               //write
+               memcpy(*esp, token, strlen(token));
              }
         //null pointer sentinel
         argv[argc] = 0;
@@ -577,67 +577,25 @@ setup_stack (void **esp, char *input)
         // Push the pointers to the args
         int i;
         for(i = argc; i >= 0; i--) {
-          *esp -= 4;
-          printf("POINTER: %p\n", argv[i]);
+          //*esp -= 4;
+          *esp -= sizeof(char*);
+          if(DEBUG) printf("POINTER: %p\n", argv[i]);
           //void *arg_ptr = argv[i];
-          memcpy(*esp, &argv[i], sizeof(int));
+          memcpy(*esp, &argv[i], sizeof(char*));
         }
-        // Push argv
-        void* tmp = *esp;
-        *esp -= sizeof(&tmp);
-        memcpy(*esp, &tmp, sizeof(&tmp)+1);
+        // Push argv (address of argv[0])
+        void * temp = *esp;
+      	*esp -= sizeof(&temp);
+      	memcpy(*esp, &temp, sizeof(&temp));
         // Push argc
         *esp -= sizeof(argc);
         memcpy(*esp, &argc, sizeof(argc));
         // Push fake return address
-        *esp -= sizeof(argv[argc]); // 0
-        memcpy(*esp, &argv[argc], sizeof(argv[argc]));
+        *esp -= sizeof(void*); // 0
+        memcpy(*esp, &argv[argc], sizeof(void*));
 
         free(argv);
-
         /*end lab3*/
-        /*Lab 3
-        char *token, *save_ptr;
-        int argc = 0;
-        int* *argv = malloc(32*sizeof(int)); //max no of arguments
-
-        for (token = strtok_r ((char*)input, " ", &save_ptr); token != NULL;
-             token = strtok_r (NULL, " ", &save_ptr))
-          {
-              //ADD WORDS ON THE STACK
-             *esp -= strlen(token)+1;
-             argv[argc] = (int*) *esp;
-
-             argc++;
-             memcpy(*esp, token, strlen(token));
-
-          }
-          argv[argc] = 0;
-
-          //ADD WORD ALIGNMENT ON THE STACK
-          *esp -= (int) *esp % 4;
-          *esp -= 4;
-          //ADD THE ARGV PTR ARRAY ON THE STACK
-          int i;
-        	for(i=argc;i>=0;i--){
-        		*esp -= 4;
-            void *arg_ptr = argv[i];
-        		memcpy(*esp, &arg_ptr, sizeof(int));
-        	}
-          //ADD ARGV[0] PTR ON THE STACK
-          memcpy(*esp-4, esp, sizeof(int));
-
-          //ADD ARGC ON THE STACK
-          *esp -= 8;
-          memcpy(*esp, (const void*)&argc, sizeof(int));
-
-          //ADD THE RETURN ADDRESS ON THE STACK
-          *esp -= 4;
-          void *arg_ptr = argv[argc];
-          memcpy(*esp, &arg_ptr, sizeof(int));
-
-          free(argv);
-          End Lab 3*/
       }
       else{
         palloc_free_page (kpage);
