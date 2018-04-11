@@ -8,7 +8,7 @@
 
 #define FD_MAX 128 //Lab1
 
-static bool DEBUG = false; 
+static bool DEBUG = false;
 
 struct list sleep_list; //Lab2
 
@@ -128,7 +128,7 @@ struct report_card
     bool dead;
     bool orphan;
     bool parent_waited_already;
-    //struct lock lock;
+    struct lock lock;
     struct semaphore sema;
     struct semaphore wait_sema;	// Enables parent to wait for child
     struct list_elem child_elem;

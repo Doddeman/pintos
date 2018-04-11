@@ -54,8 +54,10 @@ process_execute (const char *file_name)
 
   //Initiate semaphore to make process wait until child finished loading file
   sema_init(&child_status->sema, 0);
-  //
+  ////Initiate semaphore to make process wait until child finished exiting
   sema_init(&child_status->wait_sema, 0);
+
+  lock_init(&child_status->lock);
 
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (file_name, PRI_DEFAULT, start_process, child_status);
@@ -148,14 +150,13 @@ process_wait (tid_t child_tid)
       if(DEBUG) printf("wait loop tid: %d\n", rc->tid);
       if(rc->tid == child_tid){ //match
         if(DEBUG) printf("matching tid\n");
-
         if(rc->parent_waited_already){
           if(DEBUG) printf("IF: %s\n", thread_name());
           return -1;
         }
         else{
-          sema_down(&rc->wait_sema); //upped in thread_exit()
           if(DEBUG) printf("ELSE: %s\n", thread_name());
+          sema_down(&rc->wait_sema); //upped in thread_exit()
           rc->parent_waited_already = true;
           return rc->exit_status;
         }

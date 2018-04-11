@@ -146,11 +146,16 @@ int wait(int pid){
 static void
 syscall_handler (struct intr_frame *f UNUSED)
 {
-  //printf("MEN HALLÅ\n" );
-  printf("STACKPTR %d\n", f->esp);
+  if(DEBUG) printf("STACKPTR %d\n", f->esp);
   int * stackptr = f->esp;
+  if(!is_user_vaddr(stackptr)){
+    exit(-1);
+  }
+  if(pagedir_get_page(thread_current()->pagedir, stackptr) == NULL){
+    exit(-1);
+  }
   switch (*stackptr) {
-    printf("STACKPTR %d\n", *stackptr);
+    if(DEBUG) printf("STACKPTR %d\n", *stackptr);
     case SYS_HALT:
     {
       halt();
@@ -158,6 +163,12 @@ syscall_handler (struct intr_frame *f UNUSED)
     }
     case SYS_CREATE:
     {
+      if(!is_user_vaddr(stackptr[1]) || !is_user_vaddr(stackptr[2])){
+        exit(-1);
+      }
+      if(pagedir_get_page(thread_current()->pagedir, stackptr[1]) == NULL){
+        exit(-1);
+      }
       const char *file = (const char*)stackptr[1];
       unsigned initial_size = (unsigned)stackptr[2];
       f->eax = create(file, initial_size);
@@ -165,6 +176,12 @@ syscall_handler (struct intr_frame *f UNUSED)
     }
     case SYS_OPEN:
     {
+      if(!is_user_vaddr(stackptr[1])){
+        exit(-1);
+      }
+      if(pagedir_get_page(thread_current()->pagedir, stackptr[1]) == NULL){
+        exit(-1);
+      }
       const char *file = (const char*)stackptr[1];
       f->eax = open(file);
       break;
@@ -177,6 +194,12 @@ syscall_handler (struct intr_frame *f UNUSED)
     }
     case SYS_READ:
     {
+      if(!is_user_vaddr(stackptr[1]) || !is_user_vaddr(stackptr[2]) || !is_user_vaddr(stackptr[3])){
+        exit(-1);
+      }
+      if(pagedir_get_page(thread_current()->pagedir, stackptr[2]) == NULL){
+        exit(-1);
+      }
       int fd = (int)stackptr[1];
       void * buffer = (void*)stackptr[2];
       unsigned size = (unsigned)stackptr[3];
@@ -185,6 +208,12 @@ syscall_handler (struct intr_frame *f UNUSED)
     }
     case SYS_WRITE:
     {
+      if(!is_user_vaddr(stackptr[1]) || !is_user_vaddr(stackptr[2]) || !is_user_vaddr(stackptr[3])){
+        exit(-1);
+      }
+      if(pagedir_get_page(thread_current()->pagedir, stackptr[2]) == NULL){
+        exit(-1);
+      }
       int fd = (int)stackptr[1];
       const void * buffer = (const void*)stackptr[2];
       unsigned size = (unsigned)stackptr[3];
@@ -193,19 +222,30 @@ syscall_handler (struct intr_frame *f UNUSED)
     }
     case SYS_EXEC:
     {
-      //printf("MEN HALLÅ3\n" );
+      if(!is_user_vaddr(stackptr[1])){
+        exit(-1);
+      }
+      if(pagedir_get_page(thread_current()->pagedir, stackptr[1]) == NULL){
+        exit(-1);
+      }
       const char * cmd_line = (const char*)stackptr[1];
       f->eax = exec(cmd_line);
       break;
     }
     case SYS_EXIT:
     {
+      if(!is_user_vaddr(stackptr[1])){
+        exit(-1);
+      }
       int status = (int)stackptr[1];
       exit(status);
       break;
     }
     case SYS_WAIT:
     {
+      if(!is_user_vaddr(stackptr[1])){
+        exit(-1);
+      }
       int pid = (int)stackptr[1];
       f->eax = wait(pid);
       break;
