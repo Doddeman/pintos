@@ -47,7 +47,7 @@ static long long kernel_ticks;  /* # of timer ticks in kernel threads. */
 static long long user_ticks;    /* # of timer ticks in user programs. */
 
 /* Scheduling. */
-#define TIME_SLICE 4            /* # of timer ticks to give each thread. */
+#define TIME_SLICE 1            /* # of timer ticks to give each thread. */
 static unsigned thread_ticks;   /* # of timer ticks since last yield. */
 
 /* If false (default), use round-robin scheduler.
@@ -302,34 +302,38 @@ thread_exit (void)
   }
 
   //CASE 3: if current thread's daddy is dead
-  sema_down(&thread_current()->report_card->sema);
-  //lock_acquire(&thread_current()->report_card->lock);
+  //sema_down(&thread_current()->report_card->sema);
+  lock_acquire(&thread_current()->report_card->lock);
   if(thread_current()->report_card->orphan) {
-    sema_up(&thread_current()->report_card->sema);
-    //lock_release(&thread_current()->report_card->lock);
+    //sema_up(&thread_current()->report_card->sema);
+    lock_release(&thread_current()->report_card->lock);
     if(DEBUG) printf("%s\n", "thread_exit() is orphan");
     free(thread_current()->report_card);
   }
   else { //CASE 4: Probably weird and incorrect
     if(DEBUG) printf("%s\n", "thread_exit() no orphan, parent sleep");
     thread_current()->report_card->dead = true;
-    //lock_release(&thread_current()->parent_relation->lock);
-    sema_up(&thread_current()->report_card->sema);
+    lock_release(&thread_current()->report_card->lock);
+    //sema_up(&thread_current()->report_card->sema);
   }
 
   //Free memory for all info of dead children of current thread
   enum intr_level old_level = intr_disable();
+  lock_acquire(&thread_current()->report_card->lock);
 	while (!list_empty(&thread_current()->list_of_children)){
     if(DEBUG) printf("HEJ1111\n");
     struct list_elem *elem = list_pop_front(&thread_current()->list_of_children);
     if(DEBUG) printf("HEJ2222\n");
     struct report_card *rc = list_entry(elem, struct report_card, child_elem);
     if(DEBUG) printf("TEST TID: %d\n", rc->tid);
+    lock_acquire(&rc->lock);
     rc->orphan = true;
     if(rc->dead){
       free(rc);
     }
+    lock_release(&rc->lock);
   }
+  lock_release(&thread_current()->report_card->lock);
   intr_set_level(old_level);
   /*end Lab3*/
 #endif

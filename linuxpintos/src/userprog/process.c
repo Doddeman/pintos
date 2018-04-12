@@ -63,6 +63,7 @@ process_execute (const char *file_name)
   tid = thread_create (file_name, PRI_DEFAULT, start_process, child_status);
 
   sema_down(&child_status->sema);
+  lock_acquire(&child_status->lock);
   if (!child_status->load_success){
     tid = TID_ERROR;
   }
@@ -70,16 +71,7 @@ process_execute (const char *file_name)
     free(child_status);
   }
   list_push_back (&thread_current()->list_of_children, &child_status->child_elem);
-
-/*
-  struct list_elem *el;
-  for(el = list_begin(&thread_current()->list_of_children); el != list_end(&thread_current()->list_of_children); el = list_next(el)){
-    struct report_card *rc = list_entry(el, struct report_card, child_elem);
-    if(DEBUG) printf("TEST TID: %d\n", rc->tid);
-  }
-  */
   /*Lab3 end*/
-
   //palloc_free_page (fn_copy);
   return tid;
 }
@@ -104,6 +96,7 @@ start_process (void *child_status)
   success = load (file_name, &if_.eip, &if_.esp);
 
   /*Start Lab3*/
+
   cs->load_success = success;
   thread_current()->report_card = cs;
   cs->tid = thread_current()->tid;
@@ -141,7 +134,9 @@ process_wait (tid_t child_tid)
 
   if(DEBUG) printf("WAIT THREAD NAME + ID: %s + %d. LINE: %d\n",thread_current()->name, thread_current()->tid, __LINE__);
 
+  lock_acquire(&thread_current()->report_card->lock);
   struct list * children = &thread_current()->list_of_children;
+  lock_release(&thread_current()->report_card->lock);
   struct list_elem *elem = list_begin(children);
   int count = 0;
     while (elem != list_end(children)) {
@@ -165,7 +160,6 @@ process_wait (tid_t child_tid)
       elem = list_next(elem);
     }
      if(DEBUG) printf("EXITED WAIT LOOP\n");
-
   return -1;
 }
 
@@ -587,10 +581,8 @@ setup_stack (void **esp, char *input)
         // Push the pointers to the args
         int i;
         for(i = argc; i >= 0; i--) {
-          //*esp -= 4;
           *esp -= sizeof(char*);
           if(DEBUG) printf("POINTER: %p\n", argv[i]);
-          //void *arg_ptr = argv[i];
           memcpy(*esp, &argv[i], sizeof(char*));
         }
         // Push argv (address of argv[0])
