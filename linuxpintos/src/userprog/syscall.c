@@ -56,7 +56,7 @@ int open(const char *file){
   }
   else{ //assign file to fd
     thread_current()->fd_array[fd_counter] = filesys_open(file);
-    fd = fd_counter + 2; //+2 to avoid fd = STDIN or STDIOUT
+    fd = fd_counter + 2; //+2 to avoid fd = STDIN or STDOUT
   }
   //check if file opened
   if(thread_current()->fd_array[fd_counter] == NULL){
@@ -148,9 +148,11 @@ syscall_handler (struct intr_frame *f UNUSED)
 {
   if(DEBUG) printf("STACKPTR %d\n", f->esp);
   int * stackptr = f->esp;
+  //Checks if stackptr is at user virtual address (below PHYS_BASE)
   if(!is_user_vaddr(stackptr)){
     exit(-1);
   }
+  //Checks if has a page in the page table
   if(pagedir_get_page(thread_current()->pagedir, stackptr) == NULL){
     exit(-1);
   }
@@ -189,6 +191,14 @@ syscall_handler (struct intr_frame *f UNUSED)
     case SYS_CLOSE:
     {
       int fd = (int)stackptr[1];
+      //Check if fd in fd_array
+      if(fd < 0 || fd >= FD_MAX){
+        exit(-1);
+      }
+      //Check that fd != console output stream
+      if (fd == STDOUT_FILENO){
+        exit(-1);
+      }
       close(fd);
       break;
     }
@@ -201,6 +211,13 @@ syscall_handler (struct intr_frame *f UNUSED)
         exit(-1);
       }
       int fd = (int)stackptr[1];
+      if(fd < 0 || fd >= FD_MAX){
+        exit(-1);
+      }
+      //check that fd associated with file
+      if(thread_current()->fd_array[fd-2] == NULL){
+        exit(-1);
+      }
       void * buffer = (void*)stackptr[2];
       unsigned size = (unsigned)stackptr[3];
       f->eax = read(fd, buffer, size);
@@ -215,6 +232,12 @@ syscall_handler (struct intr_frame *f UNUSED)
         exit(-1);
       }
       int fd = (int)stackptr[1];
+      if(fd < 0 || fd >= FD_MAX){
+        exit(-1);
+      }
+      if(thread_current()->fd_array[fd-2] == NULL){
+        exit(-1);
+      }
       const void * buffer = (const void*)stackptr[2];
       unsigned size = (unsigned)stackptr[3];
       f->eax = write(fd, buffer, size);
