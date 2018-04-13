@@ -134,9 +134,7 @@ process_wait (tid_t child_tid)
 
   if(DEBUG) printf("WAIT THREAD NAME + ID: %s + %d. LINE: %d\n",thread_current()->name, thread_current()->tid, __LINE__);
 
-  lock_acquire(&thread_current()->report_card->lock);
   struct list * children = &thread_current()->list_of_children;
-  lock_release(&thread_current()->report_card->lock);
   struct list_elem *elem = list_begin(children);
   int count = 0;
     while (elem != list_end(children)) {
