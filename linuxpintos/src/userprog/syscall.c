@@ -168,9 +168,8 @@ void check_string(char *str){
   }
   int i = 0;
 	while(true){
-		if(!is_user_vaddr(str+i)  || pagedir_get_page(thread_current()->pagedir, str+i) == NULL){
-      exit(-1);
-    }
+    check_pointer(str+i);
+    check_page(str+i);
 		if(*((char*)(str+i)) == '\0'){
       break;
     }
@@ -184,9 +183,8 @@ void check_buffer(void *buff, unsigned size){
   }
   int i;
   for(i = 0; i < size; i++){
-    if(!is_user_vaddr(buff+i)  || pagedir_get_page(thread_current()->pagedir, buff+i) == NULL){
-      exit(-1);
-    }
+    check_pointer(buff+i);
+    check_page(buff+i);
   }
 }
 
