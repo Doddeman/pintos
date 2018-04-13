@@ -8,18 +8,21 @@
 #include "filesys/file.h"
 #include "devices/input.h"
 #include "lib/kernel/stdio.h"
-/*Lab3 start*/
+/*start lab3*/
 #include "userprog/pagedir.h"
 #include "lib/string.h"
 #include "threads/vaddr.h"
-/*Lab3 end*/
+/*end lab3*/
 
+/*start lab1*/
 void halt(void);
 bool create(const char *file, unsigned initial_size);
 int open(const char *file);
 void close(int fd);
 int read (int fd, void *buffer, unsigned size);
 int write (int fd, const void *buffer, unsigned size);
+/*start lab1*/
+/*start lab3*/
 int exec(const char * cmd_line);
 void exit (int status);
 int wait(int pid);
@@ -28,6 +31,13 @@ void check_page(int *ptr);
 void check_string(char *string);
 void check_buffer(void *buff, unsigned size);
 void check_fd(int fd);
+/*end lab3*/
+/*start lab4*/
+void seek(int fd, unsigned position);
+unsigned tell(int fd);
+int filesize(int fd);
+bool remove(const char *file_name);
+/*end lab4*/
 static void syscall_handler (struct intr_frame *);
 
 //static bool DEBUG = true;
@@ -147,7 +157,7 @@ int wait(int pid){
   return exit_status;
 }
 
-/*start lab3 Help functions */
+/*start lab3 HELP FUNCTIONS */
 void check_pointer(int *ptr){
   //Checks if stackptr is at user virtual address (below PHYS_BASE)
   if(!is_user_vaddr(ptr)){
@@ -168,9 +178,8 @@ void check_string(char *str){
   }
   int i = 0;
 	while(true){
-		if(!is_user_vaddr(str+i)  || pagedir_get_page(thread_current()->pagedir, str+i) == NULL){
-      exit(-1);
-    }
+    check_pointer(str+i);
+    check_page(str+i);
 		if(*((char*)(str+i)) == '\0'){
       break;
     }
@@ -184,9 +193,8 @@ void check_buffer(void *buff, unsigned size){
   }
   int i;
   for(i = 0; i < size; i++){
-    if(!is_user_vaddr(buff+i)  || pagedir_get_page(thread_current()->pagedir, buff+i) == NULL){
-      exit(-1);
-    }
+    check_pointer(buff+i);
+    check_page(buff+i);
   }
 }
 
@@ -200,7 +208,38 @@ void check_fd(int fd){
     exit(-1);
   }
 }
-/*end lab3 help functions */
+/*end lab3 HELP FUNCTIONS */
+
+void seek(int fd, unsigned position){
+  struct file * file = thread_current()->fd_array[fd-2];
+  int filesize = file_length(file);
+  if(DEBUG) printf("position: %d, filesize: %d\n",position, filesize);
+  if(position > filesize){
+    if(DEBUG) printf("SEEK FILESIZE\n");
+    file_seek(file, filesize);
+  }
+  else{
+    if(DEBUG) printf("SEEK POSITION\n");
+    file_seek(file, position);
+  }
+}
+
+unsigned tell(int fd){
+  struct file * file = thread_current()->fd_array[fd-2];
+  unsigned position = file_tell(file);
+  return position;
+}
+
+int filesize(int fd){
+  struct file * file = thread_current()->fd_array[fd-2];
+  int filesize = file_length(file);
+  return filesize;
+}
+
+bool remove(const char *file_name){
+  bool success = filesys_remove(file_name);
+  return success;
+}
 
 static void
 syscall_handler (struct intr_frame *f UNUSED)
@@ -297,6 +336,40 @@ syscall_handler (struct intr_frame *f UNUSED)
       check_pointer(stackptr[1]);
       int pid = (int)stackptr[1];
       f->eax = wait(pid);
+      break;
+    }
+    case SYS_SEEK:
+    {
+      check_pointer(stackptr[1]);
+      check_pointer(stackptr[2]);
+      int fd = (int)stackptr[1];
+      check_fd(fd);
+      unsigned position = (unsigned)stackptr[2];
+      seek(fd, position);
+      break;
+    }
+    case SYS_TELL:
+    {
+      check_pointer(stackptr[1]);
+      int fd = (int)stackptr[1];
+      check_fd(fd);
+      f->eax = tell(fd);
+      break;
+    }
+    case SYS_FILESIZE:
+    {
+      check_pointer(stackptr[1]);
+      int fd = (int)stackptr[1];
+      check_fd(fd);
+      f->eax = filesize(fd);
+      break;
+    }
+    case SYS_REMOVE:
+    {
+      check_pointer(stackptr[1]);
+      check_string(stackptr[1]);
+      const char *file_name = (const char*)stackptr[1];
+      f->eax = remove(file_name);
       break;
     }
   }
