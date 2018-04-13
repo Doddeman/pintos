@@ -8,7 +8,6 @@
 #include "filesys/file.h"
 #include "devices/input.h"
 #include "lib/kernel/stdio.h"
-//#include process.c
 /*Lab3 start*/
 #include "userprog/pagedir.h"
 #include "lib/string.h"
@@ -24,6 +23,11 @@ int write (int fd, const void *buffer, unsigned size);
 int exec(const char * cmd_line);
 void exit (int status);
 int wait(int pid);
+void check_pointer(int *ptr);
+void check_page(int *ptr);
+void check_string(char *string);
+void check_buffer(void *buff, unsigned size);
+void check_fd(int fd);
 static void syscall_handler (struct intr_frame *);
 
 //static bool DEBUG = true;
@@ -143,19 +147,68 @@ int wait(int pid){
   return exit_status;
 }
 
+/*start lab3 Help functions */
+void check_pointer(int *ptr){
+  //Checks if stackptr is at user virtual address (below PHYS_BASE)
+  if(!is_user_vaddr(ptr)){
+    exit(-1);
+  }
+}
+
+void check_page(int *ptr){
+  //Checks if page in page table
+  if(pagedir_get_page(thread_current()->pagedir, ptr) == NULL){
+    exit(-1);
+  }
+}
+
+void check_string(char *str){
+  if (str == NULL){
+    exit(-1);
+  }
+  int i = 0;
+	while(true){
+		if(!is_user_vaddr(str+i)  || pagedir_get_page(thread_current()->pagedir, str+i) == NULL){
+      exit(-1);
+    }
+		if(*((char*)(str+i)) == '\0'){
+      break;
+    }
+		i++;
+	}
+}
+
+void check_buffer(void *buff, unsigned size){
+  if (buff == NULL){
+    exit(-1);
+  }
+  int i;
+  for(i = 0; i < size; i++){
+    if(!is_user_vaddr(buff+i)  || pagedir_get_page(thread_current()->pagedir, buff+i) == NULL){
+      exit(-1);
+    }
+  }
+}
+
+void check_fd(int fd){
+  //Check if fd in fd_array
+  if(fd < 0 || fd >= FD_MAX){
+    exit(-1);
+  }
+  //check that fd associated with file
+  if(thread_current()->fd_array[fd-2] == NULL){
+    exit(-1);
+  }
+}
+/*end lab3 help functions */
+
 static void
 syscall_handler (struct intr_frame *f UNUSED)
 {
   if(DEBUG) printf("STACKPTR %d\n", f->esp);
   int * stackptr = f->esp;
-  //Checks if stackptr is at user virtual address (below PHYS_BASE)
-  if(!is_user_vaddr(stackptr)){
-    exit(-1);
-  }
-  //Checks if has a page in the page table
-  if(pagedir_get_page(thread_current()->pagedir, stackptr) == NULL){
-    exit(-1);
-  }
+  check_pointer(stackptr);
+  check_page(stackptr);
   switch (*stackptr) {
     if(DEBUG) printf("STACKPTR %d\n", *stackptr);
     case SYS_HALT:
@@ -165,12 +218,10 @@ syscall_handler (struct intr_frame *f UNUSED)
     }
     case SYS_CREATE:
     {
-      if(!is_user_vaddr(stackptr[1]) || !is_user_vaddr(stackptr[2])){
-        exit(-1);
-      }
-      if(pagedir_get_page(thread_current()->pagedir, stackptr[1]) == NULL){
-        exit(-1);
-      }
+      check_pointer(stackptr[1]);
+      check_pointer(stackptr[2]);
+      check_page(stackptr[1]);
+      check_string(stackptr[1]);
       const char *file = (const char*)stackptr[1];
       unsigned initial_size = (unsigned)stackptr[2];
       f->eax = create(file, initial_size);
@@ -178,24 +229,19 @@ syscall_handler (struct intr_frame *f UNUSED)
     }
     case SYS_OPEN:
     {
-      if(!is_user_vaddr(stackptr[1])){
-        exit(-1);
-      }
-      if(pagedir_get_page(thread_current()->pagedir, stackptr[1]) == NULL){
-        exit(-1);
-      }
+      check_pointer(stackptr[1]);
+      check_page(stackptr[1]);
+      check_string(stackptr[1]);
       const char *file = (const char*)stackptr[1];
       f->eax = open(file);
       break;
     }
     case SYS_CLOSE:
     {
+      check_pointer(stackptr[1]);
       int fd = (int)stackptr[1];
-      //Check if fd in fd_array
-      if(fd < 0 || fd >= FD_MAX){
-        exit(-1);
-      }
-      //Check that fd != console output stream
+      check_fd(fd);
+      //sys_close check that fd != console output stream
       if (fd == STDOUT_FILENO){
         exit(-1);
       }
@@ -204,20 +250,13 @@ syscall_handler (struct intr_frame *f UNUSED)
     }
     case SYS_READ:
     {
-      if(!is_user_vaddr(stackptr[1]) || !is_user_vaddr(stackptr[2]) || !is_user_vaddr(stackptr[3])){
-        exit(-1);
-      }
-      if(pagedir_get_page(thread_current()->pagedir, stackptr[2]) == NULL){
-        exit(-1);
-      }
+      check_pointer(stackptr[1]);
+      check_pointer(stackptr[2]);
+      check_pointer(stackptr[3]);
+      check_page(stackptr[2]);
+      check_buffer(stackptr[2], stackptr[3]);
       int fd = (int)stackptr[1];
-      if(fd < 0 || fd >= FD_MAX){
-        exit(-1);
-      }
-      //check that fd associated with file
-      if(thread_current()->fd_array[fd-2] == NULL){
-        exit(-1);
-      }
+      check_fd(fd);
       void * buffer = (void*)stackptr[2];
       unsigned size = (unsigned)stackptr[3];
       f->eax = read(fd, buffer, size);
@@ -225,19 +264,13 @@ syscall_handler (struct intr_frame *f UNUSED)
     }
     case SYS_WRITE:
     {
-      if(!is_user_vaddr(stackptr[1]) || !is_user_vaddr(stackptr[2]) || !is_user_vaddr(stackptr[3])){
-        exit(-1);
-      }
-      if(pagedir_get_page(thread_current()->pagedir, stackptr[2]) == NULL){
-        exit(-1);
-      }
+      check_pointer(stackptr[1]);
+      check_pointer(stackptr[2]);
+      check_pointer(stackptr[3]);
+      check_page(stackptr[2]);
+      check_buffer(stackptr[2], stackptr[3]);
       int fd = (int)stackptr[1];
-      if(fd < 0 || fd >= FD_MAX){
-        exit(-1);
-      }
-      if(thread_current()->fd_array[fd-2] == NULL){
-        exit(-1);
-      }
+      check_fd(fd);
       const void * buffer = (const void*)stackptr[2];
       unsigned size = (unsigned)stackptr[3];
       f->eax = write(fd, buffer, size);
@@ -245,30 +278,23 @@ syscall_handler (struct intr_frame *f UNUSED)
     }
     case SYS_EXEC:
     {
-      if(!is_user_vaddr(stackptr[1])){
-        exit(-1);
-      }
-      if(pagedir_get_page(thread_current()->pagedir, stackptr[1]) == NULL){
-        exit(-1);
-      }
+      check_pointer(stackptr[1]);
+      check_page(stackptr[1]);
+      check_string(stackptr[1]);
       const char * cmd_line = (const char*)stackptr[1];
       f->eax = exec(cmd_line);
       break;
     }
     case SYS_EXIT:
     {
-      if(!is_user_vaddr(stackptr[1])){
-        exit(-1);
-      }
+      check_pointer(stackptr[1]);
       int status = (int)stackptr[1];
       exit(status);
       break;
     }
     case SYS_WAIT:
     {
-      if(!is_user_vaddr(stackptr[1])){
-        exit(-1);
-      }
+      check_pointer(stackptr[1]);
       int pid = (int)stackptr[1];
       f->eax = wait(pid);
       break;

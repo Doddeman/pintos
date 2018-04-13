@@ -129,8 +129,8 @@ struct report_card
     bool orphan;
     bool parent_waited_already;
     struct lock lock;
-    struct semaphore sema;
-    struct semaphore wait_sema;	// Enables parent to wait for child
+    struct semaphore load_sema; //parent waits for child to load
+    struct semaphore exit_sema;	//parent waits for child to die
     struct list_elem child_elem;
     enum thread_status status;
     bool load_success; //successfully loaded file?

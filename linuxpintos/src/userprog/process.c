@@ -52,27 +52,36 @@ process_execute (const char *file_name)
   child_status->orphan = false;
   child_status->parent_waited_already = false;
 
-  //Initiate semaphore to make process wait until child finished loading file
-  sema_init(&child_status->sema, 0);
-  ////Initiate semaphore to make process wait until child finished exiting
-  sema_init(&child_status->wait_sema, 0);
+  //semaphore to make process wait until child finished loading file
+  sema_init(&child_status->load_sema, 0);
+  //semaphore to make process wait until child finished exiting
+  sema_init(&child_status->exit_sema, 0);
 
   lock_init(&child_status->lock);
 
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (file_name, PRI_DEFAULT, start_process, child_status);
 
-  sema_down(&child_status->sema);
+  sema_down(&child_status->load_sema);
+
+
+  if (tid == TID_ERROR){
+    palloc_free_page (fn_copy);
+  }
   lock_acquire(&child_status->lock);
   if (!child_status->load_success){
-    tid = TID_ERROR;
-  }
-  if (tid == TID_ERROR){
+    lock_release(&child_status->lock);
     free(child_status);
+    tid = TID_ERROR;
+    return tid;
   }
-  list_push_back (&thread_current()->list_of_children, &child_status->child_elem);
+  else{
+    enum intr_level old_level = intr_disable();
+    list_push_back (&thread_current()->list_of_children, &child_status->child_elem);
+    intr_set_level(old_level);
+    lock_release(&child_status->lock);
+  }
   /*Lab3 end*/
-  //palloc_free_page (fn_copy);
   return tid;
 }
 
@@ -96,11 +105,12 @@ start_process (void *child_status)
   success = load (file_name, &if_.eip, &if_.esp);
 
   /*Start Lab3*/
-
+  lock_acquire(&cs->lock);
   cs->load_success = success;
-  thread_current()->report_card = cs;
   cs->tid = thread_current()->tid;
-  sema_up(&cs->sema);
+  lock_release(&cs->lock);
+  thread_current()->report_card = cs;
+  sema_up(&cs->load_sema);
   palloc_free_page (file_name);
   /*End Lab3*/
 
@@ -136,28 +146,29 @@ process_wait (tid_t child_tid)
 
   struct list * children = &thread_current()->list_of_children;
   struct list_elem *elem = list_begin(children);
-  int count = 0;
     while (elem != list_end(children)) {
-      if(DEBUG) printf("COUNTER: %d\n", count);
       struct report_card *rc = list_entry(elem, struct report_card, child_elem);
       if(DEBUG) printf("wait loop tid: %d\n", rc->tid);
+      lock_acquire(&rc->lock);
       if(rc->tid == child_tid){ //match
         if(DEBUG) printf("matching tid\n");
         if(rc->parent_waited_already){
           if(DEBUG) printf("IF: %s\n", thread_name());
+          lock_release(&rc->lock);
           return -1;
         }
         else{
           if(DEBUG) printf("ELSE: %s\n", thread_name());
-          sema_down(&rc->wait_sema); //upped in thread_exit()
+          sema_down(&rc->exit_sema); //upped in thread_exit()
           rc->parent_waited_already = true;
+          lock_release(&rc->lock);
           return rc->exit_status;
         }
       }
-      count++;
+      lock_release(&rc->lock);
       elem = list_next(elem);
     }
-     if(DEBUG) printf("EXITED WAIT LOOP\n");
+  if(DEBUG) printf("EXITED WAIT LOOP\n");
   return -1;
 }
 
@@ -557,7 +568,6 @@ setup_stack (void **esp, char *input)
         for (token = strtok_r (input, " ", &save_ptr); token != NULL;
              token = strtok_r (NULL, " ", &save_ptr))
              {
-               //printf("TOKEN: %s%d\n", token, argc);
                //get pointer in the correct location to write
                *esp -= strlen(token) + 1;
                //add argument to argument vector
@@ -572,7 +582,6 @@ setup_stack (void **esp, char *input)
         //word align for multiple of 4
         int word_align = (size_t)*esp % 4;
         if(word_align > 0){
-          //if (DEBUG) printf("WORD ALIGN\n");
           *esp -= word_align;
           memcpy(*esp, &argv[argc], word_align);
         }
