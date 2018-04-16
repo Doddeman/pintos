@@ -38,12 +38,18 @@ struct inode
     int deny_write_cnt;                 /* 0: writes ok, >0: deny writes. */
     struct inode_disk data;             /* Inode content. */
 
-    /*start lab4*/
+    /*start lab4
     struct lock inode_lock;
     struct semaphore read_sema;
     struct semaphore write_sema;
     struct semaphore count_sema;
     unsigned readers;
+    end lab4*/
+    /*start lab4*/
+    struct lock inode_lock;
+    struct semaphore write_sema;
+    struct semaphore read_sema;
+    unsigned readcount;
     /*end lab4*/
   };
 
@@ -64,12 +70,14 @@ byte_to_sector (const struct inode *inode, off_t pos)
 /* List of open inodes, so that opening a single inode twice
    returns the same `struct inode'. */
 static struct list open_inodes;
+static struct lock global_inode_lock; //lab4
 
 /* Initializes the inode module. */
 void
 inode_init (void)
 {
   list_init (&open_inodes);
+  lock_init(&global_inode_lock); //lab4
 }
 
 /* Initializes an inode with LENGTH bytes of data and
@@ -80,6 +88,8 @@ inode_init (void)
 bool
 inode_create (disk_sector_t sector, off_t length)
 {
+  lock_acquire(&global_inode_lock); //lab4
+
   struct inode_disk *disk_inode = NULL;
   bool success = false;
 
@@ -110,6 +120,7 @@ inode_create (disk_sector_t sector, off_t length)
         }
       free (disk_inode);
     }
+  lock_release(&global_inode_lock); //lab4
   return success;
 }
 
@@ -119,6 +130,8 @@ inode_create (disk_sector_t sector, off_t length)
 struct inode *
 inode_open (disk_sector_t sector)
 {
+  lock_acquire(&global_inode_lock); //lab4
+
   struct list_elem *e;
   struct inode *inode;
 
@@ -133,6 +146,7 @@ inode_open (disk_sector_t sector)
           return inode;
         }
     }
+  lock_release(&global_inode_lock); //lab4
 
   /* Allocate memory. */
   inode = malloc (sizeof *inode);
@@ -145,6 +159,21 @@ inode_open (disk_sector_t sector)
   inode->open_cnt = 1;
   inode->deny_write_cnt = 0;
   inode->removed = false;
+
+  /*start lab4
+  lock_init(&inode->inode_lock);
+  sema_init(&inode->read_sema, 1);
+  sema_init(&inode->write_sema, 1);
+  sema_init(&inode->count_sema, 1);
+  inode->readers = 0;
+  end lab4*/
+  /*start lab4 */
+  lock_init(&inode->inode_lock);
+  sema_init(&inode->read_sema, 1);
+  sema_init(&inode->write_sema, 1);
+  inode->readcount = 0;
+  /*end lab4*/
+
   disk_read (filesys_disk, inode->sector, &inode->data);
   return inode;
 }
@@ -156,7 +185,9 @@ inode_reopen (struct inode *inode)
   if (inode != NULL)
     {
       ASSERT(inode->open_cnt != 0);
+      lock_acquire(&inode->inode_lock); //lab4
       inode->open_cnt++;
+      lock_release(&inode->inode_lock); //lab4
     }
   return inode;
 }
@@ -178,6 +209,7 @@ inode_close (struct inode *inode)
   if (inode == NULL)
     return;
 
+  lock_acquire(&global_inode_lock);
   /* Release resources if this was the last opener. */
   if (--inode->open_cnt == 0)
     {
@@ -191,9 +223,11 @@ inode_close (struct inode *inode)
           free_map_release (inode->data.start,
                             bytes_to_sectors (inode->data.length));
         }
-
+      lock_release(&global_inode_lock); //lab4
       free (inode);
+      // return; //lab4
     }
+  lock_release(&global_inode_lock); //lab4
 }
 
 /* Marks INODE to be deleted when it is closed by the last caller who
@@ -202,7 +236,9 @@ void
 inode_remove (struct inode *inode)
 {
   ASSERT (inode != NULL);
+  //lock_acquire(&inode->inode_lock); //lab4
   inode->removed = true;
+  //lock_release(&inode->inode_lock); //lab4
 }
 
 /* Reads SIZE bytes from INODE into BUFFER, starting at position OFFSET.
@@ -211,6 +247,13 @@ inode_remove (struct inode *inode)
 off_t
 inode_read_at (struct inode *inode, void *buffer_, off_t size, off_t offset)
 {
+  sema_down(&inode->read_sema); //start ENTRY section
+  inode->readcount++;
+  if(inode->readcount == 1){
+    sema_down(&inode->write_sema);
+  }
+  sema_up(&inode->read_sema); //end ENTRY section
+
   uint8_t *buffer = buffer_;
   off_t bytes_read = 0;
   uint8_t *bounce = NULL;
@@ -257,6 +300,14 @@ inode_read_at (struct inode *inode, void *buffer_, off_t size, off_t offset)
     }
   free (bounce);
 
+  sema_down(&inode->read_sema); //start EXIT section
+  inode->readcount--;
+  if(inode->readcount == 0){
+    sema_up(&inode->write_sema);
+  }
+  sema_up(&inode->read_sema); //end EXIT section
+
+
   return bytes_read;
 }
 
@@ -269,12 +320,22 @@ off_t
 inode_write_at (struct inode *inode, const void *buffer_, off_t size,
                 off_t offset)
 {
+  /*start lab4*/
+  sema_down(&inode->read_sema);
+  sema_down(&inode->write_sema);
+  /*end lab4*/
+
   const uint8_t *buffer = buffer_;
   off_t bytes_written = 0;
   uint8_t *bounce = NULL;
 
-  if (inode->deny_write_cnt)
+  if (inode->deny_write_cnt){
+    /*start lab4*/
+    sema_up(&inode->read_sema);
+    sema_up(&inode->write_sema);
+    /*end lab4*/
     return 0;
+  }
 
   while (size > 0)
     {
@@ -325,6 +386,11 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
     }
   free (bounce);
 
+  /*start lab4*/
+  sema_up(&inode->read_sema);
+  sema_up(&inode->write_sema);
+  /*end lab4*/
+
   return bytes_written;
 }
 
@@ -333,7 +399,9 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
 void
 inode_deny_write (struct inode *inode)
 {
+  lock_acquire(&inode->inode_lock); //lab4
   inode->deny_write_cnt++;
+  lock_acquire(&inode->inode_lock); //lab4
   ASSERT (inode->deny_write_cnt <= inode->open_cnt);
 }
 
@@ -345,7 +413,9 @@ inode_allow_write (struct inode *inode)
 {
   ASSERT (inode->deny_write_cnt > 0);
   ASSERT (inode->deny_write_cnt <= inode->open_cnt);
+  lock_acquire(&inode->inode_lock); //lab4
   inode->deny_write_cnt--;
+  lock_acquire(&inode->inode_lock); //lab4
 }
 
 /* Returns the length, in bytes, of INODE's data. */
