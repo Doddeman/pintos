@@ -17,4 +17,9 @@ bool filesys_create (const char *name, off_t initial_size);
 struct file *filesys_open (const char *name);
 bool filesys_remove (const char *name);
 
+/*start lab4 */
+#include "threads/synch.h"
+struct lock fs_lock;
+/*end lab4 */
+
 #endif /* filesys/filesys.h */
