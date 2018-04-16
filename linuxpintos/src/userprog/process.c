@@ -589,7 +589,6 @@ setup_stack (void **esp, char *input)
         int i;
         for(i = argc; i >= 0; i--) {
           *esp -= sizeof(char*);
-          if(DEBUG) printf("POINTER: %p\n", argv[i]);
           memcpy(*esp, &argv[i], sizeof(char*));
         }
         // Push argv (address of argv[0])

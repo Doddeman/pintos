@@ -6,7 +6,7 @@
 #include "devices/disk.h"
 #include "threads/synch.h" //lab4
 
-struct lock map_lock; //lab4
+static struct lock map_lock; //lab4
 
 void free_map_init (void);
 void free_map_read (void);

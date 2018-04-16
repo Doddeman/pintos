@@ -6,6 +6,7 @@
 #include "filesys/filesys.h"
 #include "filesys/free-map.h"
 #include "threads/malloc.h"
+#include "threads/thread.h" //for debug flag
 
 /* Identifies an inode. */
 #define INODE_MAGIC 0x494e4f44
@@ -88,7 +89,7 @@ inode_init (void)
 bool
 inode_create (disk_sector_t sector, off_t length)
 {
-  lock_acquire(&global_inode_lock); //lab4
+
 
   struct inode_disk *disk_inode = NULL;
   bool success = false;
@@ -98,6 +99,8 @@ inode_create (disk_sector_t sector, off_t length)
   /* If this assertion fails, the inode structure is not exactly
      one sector in size, and you should fix that. */
   ASSERT (sizeof *disk_inode == DISK_SECTOR_SIZE);
+
+  lock_acquire(&global_inode_lock); //lab4
 
   disk_inode = calloc (1, sizeof *disk_inode);
   if (disk_inode != NULL)
@@ -130,11 +133,12 @@ inode_create (disk_sector_t sector, off_t length)
 struct inode *
 inode_open (disk_sector_t sector)
 {
-  lock_acquire(&global_inode_lock); //lab4
+
 
   struct list_elem *e;
   struct inode *inode;
 
+  lock_acquire(&global_inode_lock); //lab4
   /* Check whether this inode is already open. */
   for (e = list_begin (&open_inodes); e != list_end (&open_inodes);
        e = list_next (e))
@@ -209,7 +213,9 @@ inode_close (struct inode *inode)
   if (inode == NULL)
     return;
 
+  if(DEBUG) printf("NAME: %s\n", thread_name());
   lock_acquire(&global_inode_lock);
+  if(DEBUG) printf("AFTER LOCK: %s\n", thread_name());
   /* Release resources if this was the last opener. */
   if (--inode->open_cnt == 0) {
       /* Remove from inode list and release lock. */
@@ -224,11 +230,9 @@ inode_close (struct inode *inode)
         }
       lock_release(&global_inode_lock); //lab4
       free (inode);
-      // return; //lab4
+      return; //lab4
     }
-  else{
-    lock_release(&global_inode_lock); //lab4
-  }
+  lock_release(&global_inode_lock); //lab4
 }
 
 /* Marks INODE to be deleted when it is closed by the last caller who
@@ -411,7 +415,7 @@ inode_deny_write (struct inode *inode)
 
 /* Re-enables writes to INODE.
    Must be called once by each inode opener who has called
-   inode_deny_write() on the inode, before closing the inode. */
+   inode_deny_write() on the inode, before closing the inode.  */
 void
 inode_allow_write (struct inode *inode)
 {
