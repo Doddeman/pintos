@@ -211,8 +211,7 @@ inode_close (struct inode *inode)
 
   lock_acquire(&global_inode_lock);
   /* Release resources if this was the last opener. */
-  if (--inode->open_cnt == 0)
-    {
+  if (--inode->open_cnt == 0) {
       /* Remove from inode list and release lock. */
       list_remove (&inode->elem);
 
@@ -227,7 +226,9 @@ inode_close (struct inode *inode)
       free (inode);
       // return; //lab4
     }
-  lock_release(&global_inode_lock); //lab4
+  else{
+    lock_release(&global_inode_lock); //lab4
+  }
 }
 
 /* Marks INODE to be deleted when it is closed by the last caller who
@@ -247,12 +248,14 @@ inode_remove (struct inode *inode)
 off_t
 inode_read_at (struct inode *inode, void *buffer_, off_t size, off_t offset)
 {
+  /*start lab4*/
   sema_down(&inode->read_sema); //start ENTRY section
   inode->readcount++;
   if(inode->readcount == 1){
     sema_down(&inode->write_sema);
   }
   sema_up(&inode->read_sema); //end ENTRY section
+  /*end lab4*/
 
   uint8_t *buffer = buffer_;
   off_t bytes_read = 0;
@@ -300,13 +303,14 @@ inode_read_at (struct inode *inode, void *buffer_, off_t size, off_t offset)
     }
   free (bounce);
 
+  /*start lab4*/
   sema_down(&inode->read_sema); //start EXIT section
   inode->readcount--;
   if(inode->readcount == 0){
     sema_up(&inode->write_sema);
   }
   sema_up(&inode->read_sema); //end EXIT section
-
+  /*end lab4*/
 
   return bytes_read;
 }
@@ -401,8 +405,8 @@ inode_deny_write (struct inode *inode)
 {
   lock_acquire(&inode->inode_lock); //lab4
   inode->deny_write_cnt++;
-  lock_acquire(&inode->inode_lock); //lab4
   ASSERT (inode->deny_write_cnt <= inode->open_cnt);
+  lock_release(&inode->inode_lock); //lab4
 }
 
 /* Re-enables writes to INODE.
@@ -411,11 +415,11 @@ inode_deny_write (struct inode *inode)
 void
 inode_allow_write (struct inode *inode)
 {
+  lock_acquire(&inode->inode_lock); //lab4
   ASSERT (inode->deny_write_cnt > 0);
   ASSERT (inode->deny_write_cnt <= inode->open_cnt);
-  lock_acquire(&inode->inode_lock); //lab4
   inode->deny_write_cnt--;
-  lock_acquire(&inode->inode_lock); //lab4
+  lock_release(&inode->inode_lock); //lab4
 }
 
 /* Returns the length, in bytes, of INODE's data. */
