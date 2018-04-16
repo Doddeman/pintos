@@ -8,7 +8,7 @@
 
 #define FD_MAX 128 //Lab1
 
-static bool DEBUG = false;
+static bool DEBUG = true;
 
 struct list sleep_list; //Lab2
 

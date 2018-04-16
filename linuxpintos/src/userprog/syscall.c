@@ -71,6 +71,7 @@ int open(const char *file){
   else{ //assign file to fd
     thread_current()->fd_array[fd_counter] = filesys_open(file);
     fd = fd_counter + 2; //+2 to avoid fd = STDIN or STDOUT
+    if(DEBUG) printf("EFDE: %d\n",fd);
   }
   //check if file opened
   if(thread_current()->fd_array[fd_counter] == NULL){
