@@ -201,7 +201,7 @@ thread_create (const char *name, int priority,
 
   list_init(&t->list_of_children); //Lab3
 
-  if(DEBUG) printf("init THREAD NAME + ID: %s + %d. LINE: %d\n",thread_current()->name, thread_current()->tid, __LINE__);
+  if(DEBUG) printf("init THREAD NAME: %s PRIORITY: %d. LINE: %d\n",name, priority, __LINE__);
 
   return tid;
 }

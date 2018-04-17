@@ -71,7 +71,7 @@ int open(const char *file){
   else{ //assign file to fd
     thread_current()->fd_array[fd_counter] = filesys_open(file);
     fd = fd_counter + 2; //+2 to avoid fd = STDIN or STDOUT
-    if(DEBUG) printf("EFDE: %d\n",fd);
+    if(DEBUG) printf("FD: %d\n",fd);
   }
   //check if file opened
   if(thread_current()->fd_array[fd_counter] == NULL){
@@ -245,12 +245,10 @@ bool remove(const char *file_name){
 static void
 syscall_handler (struct intr_frame *f UNUSED)
 {
-  if(DEBUG) printf("STACKPTR %d\n", f->esp);
   int * stackptr = f->esp;
   check_pointer(stackptr);
   check_page(stackptr);
   switch (*stackptr) {
-    if(DEBUG) printf("STACKPTR %d\n", *stackptr);
     case SYS_HALT:
     {
       halt();

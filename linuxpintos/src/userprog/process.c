@@ -142,7 +142,7 @@ process_wait (tid_t child_tid)
 
   //loop through all children until tid matches
 
-  if(DEBUG) printf("WAIT THREAD NAME + ID: %s + %d. LINE: %d\n",thread_current()->name, thread_current()->tid, __LINE__);
+  if(DEBUG) printf("WAIT THREAD NAME + ID: %s + %d. LINE: %d\n",thread_name(), thread_current()->tid, __LINE__);
 
   struct list * children = &thread_current()->list_of_children;
   struct list_elem *elem = list_begin(children);
@@ -153,12 +153,12 @@ process_wait (tid_t child_tid)
       if(rc->tid == child_tid){ //match
         if(DEBUG) printf("matching tid\n");
         if(rc->parent_waited_already){
-          if(DEBUG) printf("IF: %s\n", thread_name());
+          if(DEBUG) printf("IF: %d\n", rc->tid);
           lock_release(&rc->lock);
           return -1;
         }
         else{
-          if(DEBUG) printf("ELSE: %s\n", thread_name());
+          if(DEBUG) printf("ELSE: %d\n", rc->tid);
           sema_down(&rc->exit_sema); //upped in thread_exit()
           rc->parent_waited_already = true;
           lock_release(&rc->lock);
