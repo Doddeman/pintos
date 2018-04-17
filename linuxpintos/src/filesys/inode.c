@@ -213,8 +213,11 @@ inode_close (struct inode *inode)
   if (inode == NULL)
     return;
 
-  if(DEBUG) printf("NAME: %s\n", thread_name());
-  lock_acquire(&global_inode_lock);
+  if(DEBUG) printf("BEFORE LOCK: %s\n", thread_name());
+  if(!lock_held_by_current_thread(&global_inode_lock)){
+    lock_acquire(&global_inode_lock);
+  }
+
   if(DEBUG) printf("AFTER LOCK: %s\n", thread_name());
   /* Release resources if this was the last opener. */
   if (--inode->open_cnt == 0) {
@@ -329,7 +332,7 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
                 off_t offset)
 {
   /*start lab4*/
-  sema_down(&inode->read_sema);
+  //sema_down(&inode->read_sema);
   sema_down(&inode->write_sema);
   /*end lab4*/
 
@@ -339,8 +342,9 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
 
   if (inode->deny_write_cnt){
     /*start lab4*/
-    sema_up(&inode->read_sema);
     sema_up(&inode->write_sema);
+    //sema_up(&inode->read_sema);
+
     /*end lab4*/
     return 0;
   }
@@ -395,8 +399,9 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
   free (bounce);
 
   /*start lab4*/
-  sema_up(&inode->read_sema);
   sema_up(&inode->write_sema);
+  //sema_up(&inode->read_sema);
+
   /*end lab4*/
 
   return bytes_written;
