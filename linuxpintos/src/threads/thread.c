@@ -47,7 +47,7 @@ static long long kernel_ticks;  /* # of timer ticks in kernel threads. */
 static long long user_ticks;    /* # of timer ticks in user programs. */
 
 /* Scheduling. */
-#define TIME_SLICE 4            /* # of timer ticks to give each thread. */
+#define TIME_SLICE 1            /* # of timer ticks to give each thread. */
 static unsigned thread_ticks;   /* # of timer ticks since last yield. */
 
 /* If false (default), use round-robin scheduler.
@@ -296,24 +296,30 @@ thread_exit (void)
   process_exit ();
 
   /*start Lab3*/
-  //enum intr_level old_level = intr_disable();
-  //lock_acquire(&thread_current()->report_card->lock);
+  lock_try_acquire(&thread_current()->report_card->lock);
   thread_current()->report_card->dead = true;
   if(!thread_current()->report_card->orphan){
     if(DEBUG) printf("%s\n", "thread_exit() not orphan");
-    //lock_release(&thread_current()->report_card->lock);
+    if(lock_held_by_current_thread(&thread_current()->report_card->lock)){
+      lock_release(&thread_current()->report_card->lock);
+    }
     //For process_wait() when parent waits for child
     sema_up(&thread_current()->report_card->exit_sema);
   }
   else{
-    if(DEBUG) printf("%s\n", "thread_exit() is orphan");
-    //lock_release(&thread_current()->report_card->lock);
+    if(DEBUG) printf("thread_exit() ORPHAN1: %s\n", thread_name());
+    if(lock_held_by_current_thread(&thread_current()->report_card->lock)){
+      lock_release(&thread_current()->report_card->lock);
+    }
+    //PAGE FAULT HERE
     free(thread_current()->report_card);
+    if(DEBUG) printf("thread_exit() ORPHAN2: %s\n", thread_name());
   }
-  //intr_set_level(old_level);
   //Free memory for all info of dead children of current thread
 	while (!list_empty(&thread_current()->list_of_children)){
+    lock_acquire(&thread_current()->report_card->lock);
     struct list_elem *elem = list_pop_front(&thread_current()->list_of_children);
+    lock_release(&thread_current()->report_card->lock);
     struct report_card *rc = list_entry(elem, struct report_card, child_elem);
     if(DEBUG) printf("TEST TID: %d\n", rc->tid);
     lock_acquire(&rc->lock);

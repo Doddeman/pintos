@@ -76,9 +76,9 @@ process_execute (const char *file_name)
     return tid;
   }
   else{
-    enum intr_level old_level = intr_disable();
+    if(DEBUG) printf("BEFORE THREAD: %s\n", thread_name());
     list_push_back (&thread_current()->list_of_children, &child_status->child_elem);
-    intr_set_level(old_level);
+    if(DEBUG) printf("AFTER THREAD: %s\n", thread_name());
     lock_release(&child_status->lock);
   }
   /*Lab3 end*/
@@ -93,7 +93,7 @@ start_process (void *child_status)
   /*Start Lab3*/
   struct report_card *cs = (struct report_card*) child_status;
   /*End Lab3*/
-  char *file_name = cs->file_name;
+  const char *file_name = cs->file_name;
   struct intr_frame if_;
   bool success;
 
@@ -595,7 +595,7 @@ setup_stack (void **esp, char *input)
         // Push argv (address of argv[0])
         void * temp = *esp;
       	*esp -= sizeof(&temp);
-      	memcpy(*esp, &temp, sizeof(&temp));
+      	memcpy(*esp, &temp, sizeof(temp));
         // Push argc
         *esp -= sizeof(argc);
         memcpy(*esp, &argc, sizeof(argc));

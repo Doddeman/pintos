@@ -8,18 +8,21 @@
 #include "filesys/file.h"
 #include "devices/input.h"
 #include "lib/kernel/stdio.h"
-/*Lab3 start*/
+/*start lab3*/
 #include "userprog/pagedir.h"
 #include "lib/string.h"
 #include "threads/vaddr.h"
-/*Lab3 end*/
+/*end lab3*/
 
+/*start lab1*/
 void halt(void);
 bool create(const char *file, unsigned initial_size);
 int open(const char *file);
 void close(int fd);
 int read (int fd, void *buffer, unsigned size);
 int write (int fd, const void *buffer, unsigned size);
+/*start lab1*/
+/*start lab3*/
 int exec(const char * cmd_line);
 void exit (int status);
 int wait(int pid);
@@ -28,6 +31,7 @@ void check_page(int *ptr);
 void check_string(char *string);
 void check_buffer(void *buff, unsigned size);
 void check_fd(int fd);
+/*end lab3*/
 static void syscall_handler (struct intr_frame *);
 
 //static bool DEBUG = true;
@@ -61,6 +65,7 @@ int open(const char *file){
   else{ //assign file to fd
     thread_current()->fd_array[fd_counter] = filesys_open(file);
     fd = fd_counter + 2; //+2 to avoid fd = STDIN or STDOUT
+    if(DEBUG) printf("FD: %d\n",fd);
   }
   //check if file opened
   if(thread_current()->fd_array[fd_counter] == NULL){
@@ -136,7 +141,9 @@ void exit (int status){
     printf("%s: exit(%d)\n", part, status);
     break;
    }
+  //lock_acquire(&thread_current()->report_card->lock);
   thread_current()->report_card->exit_status = status;
+  //lock_release(&thread_current()->report_card->lock);
   thread_exit();
 }
 
@@ -147,7 +154,7 @@ int wait(int pid){
   return exit_status;
 }
 
-/*start lab3 Help functions */
+/*start lab3 HELP FUNCTIONS */
 void check_pointer(int *ptr){
   //Checks if stackptr is at user virtual address (below PHYS_BASE)
   if(!is_user_vaddr(ptr)){
@@ -198,17 +205,15 @@ void check_fd(int fd){
     exit(-1);
   }
 }
-/*end lab3 help functions */
+/*end lab3 HELP FUNCTIONS */
 
 static void
 syscall_handler (struct intr_frame *f UNUSED)
 {
-  if(DEBUG) printf("STACKPTR %d\n", f->esp);
   int * stackptr = f->esp;
   check_pointer(stackptr);
   check_page(stackptr);
   switch (*stackptr) {
-    if(DEBUG) printf("STACKPTR %d\n", *stackptr);
     case SYS_HALT:
     {
       halt();
