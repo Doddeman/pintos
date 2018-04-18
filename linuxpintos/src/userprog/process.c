@@ -59,15 +59,14 @@ process_execute (const char *file_name)
 
   lock_init(&child_status->lock);
 
+  sema_down(&child_status->load_sema);
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (file_name, PRI_DEFAULT, start_process, child_status);
-
-  sema_down(&child_status->load_sema);
-
 
   if (tid == TID_ERROR){
     palloc_free_page (fn_copy);
   }
+
   lock_acquire(&child_status->lock);
   if (!child_status->load_success){
     lock_release(&child_status->lock);
@@ -78,7 +77,6 @@ process_execute (const char *file_name)
   else{
     enum intr_level old_level = intr_disable();
     list_push_back (&thread_current()->list_of_children, &child_status->child_elem);
-    intr_set_level(old_level);
     lock_release(&child_status->lock);
   }
   /*Lab3 end*/
@@ -108,8 +106,8 @@ start_process (void *child_status)
   lock_acquire(&cs->lock);
   cs->load_success = success;
   cs->tid = thread_current()->tid;
-  lock_release(&cs->lock);
   thread_current()->report_card = cs;
+  lock_release(&cs->lock);
   sema_up(&cs->load_sema);
   palloc_free_page (file_name);
   /*End Lab3*/

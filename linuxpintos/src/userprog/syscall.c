@@ -147,7 +147,9 @@ void exit (int status){
     printf("%s: exit(%d)\n", part, status);
     break;
    }
+  //lock_acquire(&thread_current()->report_card->lock);
   thread_current()->report_card->exit_status = status;
+  //lock_release(&thread_current()->report_card->lock);
   thread_exit();
 }
 
