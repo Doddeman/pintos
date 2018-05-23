@@ -124,12 +124,7 @@ int write (int fd, const void *buffer, unsigned size){
 int exec(const char * cmd_line){
   if(DEBUG) printf("EXEC THREAD NAME + ID: %s + %d. LINE: %d\n",thread_current()->name, thread_current()->tid, __LINE__);
   int child_pid;
-  if (pagedir_get_page(thread_current()->pagedir, cmd_line)){
-    child_pid = process_execute(cmd_line);
-  }
-  else{
-    child_pid = -1;
-  }
+  child_pid = process_execute(cmd_line);
   if(DEBUG) printf("final exec child_pid: %d\n", child_pid);
   return child_pid;
 }
@@ -155,20 +150,23 @@ int wait(int pid){
 }
 
 /*start lab3 HELP FUNCTIONS */
+
+//Checks if stackptr is at user address (below PHYS_BASE)
+//Above PHYS_BASE, the virtual address space belongs to the kernel
 void check_pointer(int *ptr){
-  //Checks if stackptr is at user virtual address (below PHYS_BASE)
   if(!is_user_vaddr(ptr)){
     exit(-1);
   }
 }
 
+//Checks if page is in page table
 void check_page(int *ptr){
-  //Checks if page in page table
   if(pagedir_get_page(thread_current()->pagedir, ptr) == NULL){
     exit(-1);
   }
 }
 
+//iterate over every char and check each pointer
 void check_string(char *str){
   if (str == NULL){
     exit(-1);
@@ -184,6 +182,7 @@ void check_string(char *str){
 	}
 }
 
+//Check that every pointer to the buffer is valid
 void check_buffer(void *buff, unsigned size){
   if (buff == NULL){
     exit(-1);
@@ -200,7 +199,7 @@ void check_fd(int fd){
   if(fd < 0 || fd >= FD_MAX){
     exit(-1);
   }
-  //check that fd associated with file
+  //check that fd is associated with file
   if(thread_current()->fd_array[fd-2] == NULL){
     exit(-1);
   }

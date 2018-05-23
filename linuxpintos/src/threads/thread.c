@@ -296,7 +296,7 @@ thread_exit (void)
   process_exit ();
 
   /*start Lab3*/
-  lock_try_acquire(&thread_current()->report_card->lock);
+  lock_try_acquire(&thread_current()->report_card->lock); //all tests fail if not try
   thread_current()->report_card->dead = true;
   if(!thread_current()->report_card->orphan){
     if(DEBUG) printf("%s\n", "thread_exit() not orphan");
@@ -331,7 +331,6 @@ thread_exit (void)
     else{
       lock_release(&rc->lock);
     }
-
   }
   /*end Lab3*/
 #endif

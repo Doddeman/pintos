@@ -104,7 +104,6 @@ struct thread
     /*Lab3 start*/
     struct report_card * report_card;   //my report card for daddy
     struct list list_of_children;       //my children's report cards
-
     /*Lab3 end*/
 
 #ifdef USERPROG
