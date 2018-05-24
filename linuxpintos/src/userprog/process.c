@@ -64,21 +64,27 @@ process_execute (const char *file_name)
 
   sema_down(&child_status->load_sema);
 
-
   if (tid == TID_ERROR){
     palloc_free_page (fn_copy);
   }
+
   lock_acquire(&child_status->lock);
   if (!child_status->load_success){
-    lock_release(&child_status->lock);
-    free(child_status);
+    if(child_status->dead){
+      lock_release(&child_status->lock);
+      free(child_status);
+    }
+    else{
+      child_status->orphan = true;
+      lock_release(&child_status->lock);
+    }
     tid = TID_ERROR;
     return tid;
   }
   else{
-    enum intr_level old_level = intr_disable();
+    if(DEBUG) printf("BEFORE THREAD: %s\n", thread_name());
     list_push_back (&thread_current()->list_of_children, &child_status->child_elem);
-    intr_set_level(old_level);
+    if(DEBUG) printf("AFTER THREAD: %s\n", thread_name());
     lock_release(&child_status->lock);
   }
   /*Lab3 end*/
@@ -159,9 +165,9 @@ process_wait (tid_t child_tid)
         }
         else{
           if(DEBUG) printf("ELSE: %d\n", rc->tid);
-          sema_down(&rc->exit_sema); //upped in thread_exit()
           rc->parent_waited_already = true;
           lock_release(&rc->lock);
+          sema_down(&rc->exit_sema); //upped in thread_exit()
           return rc->exit_status;
         }
       }
