@@ -40,8 +40,6 @@ bool remove(const char *file_name);
 /*end lab4*/
 static void syscall_handler (struct intr_frame *);
 
-//static bool DEBUG = true;
-
 void
 syscall_init (void)
 {
@@ -366,6 +364,7 @@ syscall_handler (struct intr_frame *f UNUSED)
     case SYS_REMOVE:
     {
       check_pointer(stackptr[1]);
+      check_page(stackptr[1]);
       check_string(stackptr[1]);
       const char *file_name = (const char*)stackptr[1];
       f->eax = remove(file_name);

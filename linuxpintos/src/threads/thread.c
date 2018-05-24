@@ -297,17 +297,17 @@ thread_exit (void)
 
   /*start Lab3*/
   //enum intr_level old_level = intr_disable();
-  //lock_acquire(&thread_current()->report_card->lock);
+  lock_acquire(&thread_current()->report_card->lock);
   thread_current()->report_card->dead = true;
   if(!thread_current()->report_card->orphan){
     if(DEBUG) printf("%s\n", "thread_exit() not orphan");
-    //lock_release(&thread_current()->report_card->lock);
+    lock_release(&thread_current()->report_card->lock);
     //For process_wait() when parent waits for child
     sema_up(&thread_current()->report_card->exit_sema);
   }
   else{
     if(DEBUG) printf("%s\n", "thread_exit() is orphan");
-    //lock_release(&thread_current()->report_card->lock);
+    lock_release(&thread_current()->report_card->lock);
     free(thread_current()->report_card);
   }
   //intr_set_level(old_level);
