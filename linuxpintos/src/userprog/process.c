@@ -76,7 +76,7 @@ process_execute (const char *file_name)
     return tid;
   }
   else{
-    enum intr_level old_level = intr_disable();
+    //enum intr_level old_level = intr_disable();
     list_push_back (&thread_current()->list_of_children, &child_status->child_elem);
     lock_release(&child_status->lock);
   }
