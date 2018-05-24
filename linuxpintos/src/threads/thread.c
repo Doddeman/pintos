@@ -196,12 +196,14 @@ thread_create (const char *name, int priority,
   sf = alloc_frame (t, sizeof *sf);
   sf->eip = switch_entry;
 
+  list_init(&t->list_of_children); //Lab3
+
   /* Add to run queue. */
   thread_unblock (t);
 
-  list_init(&t->list_of_children); //Lab3
 
-  if(DEBUG) printf("init THREAD NAME + ID: %s + %d. LINE: %d\n",thread_current()->name, thread_current()->tid, __LINE__);
+
+  //if(DEBUG) printf("init THREAD NAME + ID: %s + %d. LINE: %d\n",thread_current()->name, thread_current()->tid, __LINE__);
 
   return tid;
 }
@@ -296,21 +298,22 @@ thread_exit (void)
   process_exit ();
 
   /*start Lab3*/
-  lock_try_acquire(&thread_current()->report_card->lock); //all tests fail if not try
+  lock_acquire(&thread_current()->report_card->lock); //all tests fail if not try
   thread_current()->report_card->dead = true;
   if(!thread_current()->report_card->orphan){
     if(DEBUG) printf("%s\n", "thread_exit() not orphan");
-    if(lock_held_by_current_thread(&thread_current()->report_card->lock)){
+    //if(lock_held_by_current_thread(&thread_current()->report_card->lock)){
       lock_release(&thread_current()->report_card->lock);
-    }
+    //}
     //For process_wait() when parent waits for child
     sema_up(&thread_current()->report_card->exit_sema);
   }
   else{
     if(DEBUG) printf("thread_exit() ORPHAN1: %s\n", thread_name());
-    if(lock_held_by_current_thread(&thread_current()->report_card->lock)){
-      lock_release(&thread_current()->report_card->lock);
-    }
+    //if(lock_held_by_current_thread(&thread_current()->report_card->lock)){
+    lock_release(&thread_current()->report_card->lock);
+    if(DEBUG) printf("thread_exit() ORPHAN 1.5%s\n", thread_name());
+    //}
     //PAGE FAULT HERE
     free(thread_current()->report_card);
     if(DEBUG) printf("thread_exit() ORPHAN2: %s\n", thread_name());
@@ -590,8 +593,9 @@ schedule (void)
   ASSERT (cur->status != THREAD_RUNNING);
   ASSERT (is_thread (next));
 
-  if (cur != next)
+  if (cur != next) {
     prev = switch_threads (cur, next);
+  }
   schedule_tail (prev);
 }
 

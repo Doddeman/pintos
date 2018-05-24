@@ -64,14 +64,20 @@ process_execute (const char *file_name)
 
   sema_down(&child_status->load_sema);
 
-
   if (tid == TID_ERROR){
     palloc_free_page (fn_copy);
   }
+
   lock_acquire(&child_status->lock);
   if (!child_status->load_success){
-    lock_release(&child_status->lock);
-    free(child_status);
+    if (child_status->dead) {
+        lock_release(&child_status->lock);
+        free(child_status);
+    }
+    else {
+        child_status->orphan = true;
+        lock_release(&child_status->lock);
+    }
     tid = TID_ERROR;
     return tid;
   }
@@ -139,11 +145,8 @@ This function will be implemented in Lab3 . */
 int
 process_wait (tid_t child_tid)
 {
-
   //loop through all children until tid matches
-
   if(DEBUG) printf("WAIT THREAD NAME + ID: %s + %d. LINE: %d\n",thread_current()->name, thread_current()->tid, __LINE__);
-
   struct list * children = &thread_current()->list_of_children;
   struct list_elem *elem = list_begin(children);
     while (elem != list_end(children)) {
@@ -159,9 +162,9 @@ process_wait (tid_t child_tid)
         }
         else{
           if(DEBUG) printf("ELSE: %s\n", thread_name());
-          sema_down(&rc->exit_sema); //upped in thread_exit()
           rc->parent_waited_already = true;
           lock_release(&rc->lock);
+          sema_down(&rc->exit_sema); //upped in thread_exit()
           return rc->exit_status;
         }
       }

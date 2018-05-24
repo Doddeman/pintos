@@ -34,8 +34,6 @@ void check_fd(int fd);
 /*end lab3*/
 static void syscall_handler (struct intr_frame *);
 
-//static bool DEBUG = true;
-
 void
 syscall_init (void)
 {
@@ -136,9 +134,7 @@ void exit (int status){
     printf("%s: exit(%d)\n", part, status);
     break;
    }
-  //lock_acquire(&thread_current()->report_card->lock);
   thread_current()->report_card->exit_status = status;
-  //lock_release(&thread_current()->report_card->lock);
   thread_exit();
 }
 
