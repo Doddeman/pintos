@@ -7,6 +7,7 @@
 #include "filesys/free-map.h"
 #include "threads/malloc.h"
 #include "threads/thread.h" //for debug flag
+#include "threads/synch.h"
 
 /* Identifies an inode. */
 #define INODE_MAGIC 0x494e4f44
@@ -39,19 +40,19 @@ struct inode
     int deny_write_cnt;                 /* 0: writes ok, >0: deny writes. */
     struct inode_disk data;             /* Inode content. */
 
-    /*start lab4
+    /*start lab4*/
     struct lock inode_lock;
     struct semaphore read_sema;
     struct semaphore write_sema;
     struct semaphore count_sema;
-    unsigned readers;
-    end lab4*/
-    /*start lab4*/
+    unsigned readcount;
+    /*end lab4*/
+    /*start lab4
     struct lock inode_lock;
     struct semaphore write_sema;
     struct semaphore read_sema;
     unsigned readcount;
-    /*end lab4*/
+    end lab4*/
   };
 
 /* Returns the disk sector that contains byte offset POS within
@@ -90,6 +91,7 @@ bool
 inode_create (disk_sector_t sector, off_t length)
 {
 
+  lock_acquire(&global_inode_lock); //lab4
 
   struct inode_disk *disk_inode = NULL;
   bool success = false;
@@ -100,7 +102,7 @@ inode_create (disk_sector_t sector, off_t length)
      one sector in size, and you should fix that. */
   ASSERT (sizeof *disk_inode == DISK_SECTOR_SIZE);
 
-  lock_acquire(&global_inode_lock); //lab4
+
 
   disk_inode = calloc (1, sizeof *disk_inode);
   if (disk_inode != NULL)
@@ -133,12 +135,12 @@ inode_create (disk_sector_t sector, off_t length)
 struct inode *
 inode_open (disk_sector_t sector)
 {
-
+  lock_acquire(&global_inode_lock); //lab4
 
   struct list_elem *e;
   struct inode *inode;
 
-  lock_acquire(&global_inode_lock); //lab4
+
   /* Check whether this inode is already open. */
   for (e = list_begin (&open_inodes); e != list_end (&open_inodes);
        e = list_next (e))
@@ -147,6 +149,7 @@ inode_open (disk_sector_t sector)
       if (inode->sector == sector)
         {
           inode_reopen (inode);
+            lock_release(&global_inode_lock); //lab4
           return inode;
         }
     }
@@ -164,19 +167,19 @@ inode_open (disk_sector_t sector)
   inode->deny_write_cnt = 0;
   inode->removed = false;
 
-  /*start lab4
+  /*start lab4*/
   lock_init(&inode->inode_lock);
   sema_init(&inode->read_sema, 1);
   sema_init(&inode->write_sema, 1);
   sema_init(&inode->count_sema, 1);
-  inode->readers = 0;
-  end lab4*/
-  /*start lab4 */
+  inode->readcount = 0;
+  /*end lab4*/
+  /*start lab4
   lock_init(&inode->inode_lock);
   sema_init(&inode->read_sema, 1);
   sema_init(&inode->write_sema, 1);
   inode->readcount = 0;
-  /*end lab4*/
+  end lab4*/
 
   disk_read (filesys_disk, inode->sector, &inode->data);
   return inode;
@@ -214,10 +217,7 @@ inode_close (struct inode *inode)
     return;
 
   if(DEBUG) printf("BEFORE LOCK: %s\n", thread_name());
-  if(!lock_held_by_current_thread(&global_inode_lock)){
-    lock_acquire(&global_inode_lock);
-  }
-
+  lock_acquire(&global_inode_lock);
   if(DEBUG) printf("AFTER LOCK: %s\n", thread_name());
   /* Release resources if this was the last opener. */
   if (--inode->open_cnt == 0) {
@@ -257,10 +257,12 @@ inode_read_at (struct inode *inode, void *buffer_, off_t size, off_t offset)
 {
   /*start lab4*/
   sema_down(&inode->read_sema); //start ENTRY section
+  sema_down(&inode->count_sema); ////
   inode->readcount++;
   if(inode->readcount == 1){
     sema_down(&inode->write_sema);
   }
+  sema_up(&inode->count_sema); ////
   sema_up(&inode->read_sema); //end ENTRY section
   /*end lab4*/
 
@@ -311,12 +313,12 @@ inode_read_at (struct inode *inode, void *buffer_, off_t size, off_t offset)
   free (bounce);
 
   /*start lab4*/
-  sema_down(&inode->read_sema); //start EXIT section
+  sema_down(&inode->count_sema); //start EXIT section ////
   inode->readcount--;
   if(inode->readcount == 0){
     sema_up(&inode->write_sema);
   }
-  sema_up(&inode->read_sema); //end EXIT section
+  sema_up(&inode->count_sema); //end EXIT section ////
   /*end lab4*/
 
   return bytes_read;
@@ -332,7 +334,7 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
                 off_t offset)
 {
   /*start lab4*/
-  //sema_down(&inode->read_sema);
+  sema_down(&inode->read_sema); ////
   sema_down(&inode->write_sema);
   /*end lab4*/
 
@@ -343,7 +345,7 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
   if (inode->deny_write_cnt){
     /*start lab4*/
     sema_up(&inode->write_sema);
-    //sema_up(&inode->read_sema);
+    sema_up(&inode->read_sema); ////
 
     /*end lab4*/
     return 0;
@@ -400,7 +402,7 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
 
   /*start lab4*/
   sema_up(&inode->write_sema);
-  //sema_up(&inode->read_sema);
+  sema_up(&inode->read_sema);
 
   /*end lab4*/
 

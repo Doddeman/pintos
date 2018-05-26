@@ -244,6 +244,9 @@ static void
 syscall_handler (struct intr_frame *f UNUSED)
 {
   int * stackptr = f->esp;
+  if (stackptr == NULL){
+    exit(-1);
+  }
   check_pointer(stackptr);
   check_page(stackptr);
   switch (*stackptr) {
@@ -340,7 +343,7 @@ syscall_handler (struct intr_frame *f UNUSED)
       check_pointer(stackptr[1]);
       check_pointer(stackptr[2]);
       int fd = (int)stackptr[1];
-      check_fd(fd);
+      //check_fd(fd);
       unsigned position = (unsigned)stackptr[2];
       seek(fd, position);
       break;
@@ -349,7 +352,7 @@ syscall_handler (struct intr_frame *f UNUSED)
     {
       check_pointer(stackptr[1]);
       int fd = (int)stackptr[1];
-      check_fd(fd);
+      //check_fd(fd);
       f->eax = tell(fd);
       break;
     }
@@ -357,7 +360,7 @@ syscall_handler (struct intr_frame *f UNUSED)
     {
       check_pointer(stackptr[1]);
       int fd = (int)stackptr[1];
-      check_fd(fd);
+      //check_fd(fd);
       f->eax = filesize(fd);
       break;
     }
@@ -365,7 +368,7 @@ syscall_handler (struct intr_frame *f UNUSED)
     {
       check_pointer(stackptr[1]);
       check_page(stackptr[1]);
-      check_string(stackptr[1]);
+      //check_string(stackptr[1]);
       const char *file_name = (const char*)stackptr[1];
       f->eax = remove(file_name);
       break;

@@ -76,8 +76,9 @@ filesys_open (const char *name)
   if (dir != NULL)
     dir_lookup (dir, name, &inode);
   dir_close (dir);
-  lock_release(&fs_lock); //lab4
-  return file_open (inode);
+  struct file * file = file_open(inode);  //lab4
+  lock_release(&fs_lock);                 //lab4
+  return file;                            //lab4
 }
 
 /* Deletes the file named NAME.
