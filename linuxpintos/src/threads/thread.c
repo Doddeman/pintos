@@ -296,36 +296,36 @@ thread_exit (void)
   process_exit ();
 
   /*start Lab3*/
-  //enum intr_level old_level = intr_disable();
-  lock_acquire(&thread_current()->report_card->lock);
-  thread_current()->report_card->dead = true;
-  if(!thread_current()->report_card->orphan){
-    if(DEBUG) printf("%s\n", "thread_exit() not orphan");
-    lock_release(&thread_current()->report_card->lock);
-    //For process_wait() when parent waits for child
-    sema_up(&thread_current()->report_card->exit_sema);
-  }
-  else{
-    if(DEBUG) printf("%s\n", "thread_exit() is orphan");
-    lock_release(&thread_current()->report_card->lock);
-    free(thread_current()->report_card);
-  }
-  //intr_set_level(old_level);
-  //Free memory for all info of dead children of current thread
-	while (!list_empty(&thread_current()->list_of_children)){
-    struct list_elem *elem = list_pop_front(&thread_current()->list_of_children);
-    struct report_card *rc = list_entry(elem, struct report_card, child_elem);
-    if(DEBUG) printf("TEST TID: %d\n", rc->tid);
-    lock_acquire(&rc->lock);
-    rc->orphan = true;
-    if(rc->dead){
-      lock_release(&rc->lock);
-      free(rc);
+  if(thread_current()->report_card){ //check that report card != NULL (main)
+    lock_acquire(&thread_current()->report_card->lock);
+    thread_current()->report_card->dead = true;
+    if(!thread_current()->report_card->orphan){
+      if(DEBUG) printf("%s\n", "thread_exit() not orphan");
+      lock_release(&thread_current()->report_card->lock);
+      //For process_wait() when parent waits for child
+      sema_up(&thread_current()->report_card->exit_sema);
     }
     else{
-      lock_release(&rc->lock);
+      if(DEBUG) printf("%s\n", "thread_exit() is orphan");
+      lock_release(&thread_current()->report_card->lock);
+      free(thread_current()->report_card);
     }
-
+    //intr_set_level(old_level);
+    //Free memory for all info of dead children of current thread
+  	while (!list_empty(&thread_current()->list_of_children)){
+      struct list_elem *elem = list_pop_front(&thread_current()->list_of_children);
+      struct report_card *rc = list_entry(elem, struct report_card, child_elem);
+      if(DEBUG) printf("TEST TID: %d\n", rc->tid);
+      lock_acquire(&rc->lock);
+      rc->orphan = true;
+      if(rc->dead){
+        lock_release(&rc->lock);
+        free(rc);
+      }
+      else{
+        lock_release(&rc->lock);
+      }
+    }
   }
   /*end Lab3*/
 #endif
