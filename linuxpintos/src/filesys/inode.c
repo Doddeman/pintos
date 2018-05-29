@@ -320,21 +320,14 @@ off_t
 inode_write_at (struct inode *inode, const void *buffer_, off_t size,
                 off_t offset)
 {
-  /*start lab4*/
-  //sema_down(&inode->read_sema);
-  sema_down(&inode->write_sema);
-  /*end lab4*/
+  sema_down(&inode->write_sema); //lab4
 
   const uint8_t *buffer = buffer_;
   off_t bytes_written = 0;
   uint8_t *bounce = NULL;
 
   if (inode->deny_write_cnt){
-    /*start lab4*/
-    sema_up(&inode->write_sema);
-    //sema_up(&inode->read_sema);
-
-    /*end lab4*/
+    sema_up(&inode->write_sema); //lab4
     return 0;
   }
 
@@ -387,11 +380,7 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
     }
   free (bounce);
 
-  /*start lab4*/
-  sema_up(&inode->write_sema);
-  //sema_up(&inode->read_sema);
-
-  /*end lab4*/
+  sema_up(&inode->write_sema); //lab4
 
   return bytes_written;
 }
