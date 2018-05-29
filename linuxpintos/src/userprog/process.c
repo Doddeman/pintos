@@ -68,18 +68,13 @@ process_execute (const char *file_name)
     palloc_free_page (fn_copy);
   }
 
-  lock_acquire(&child_status->lock);
+  lock_acquire(&child_status->lock); //locking thread_exit
   if (!child_status->load_success){
     if (child_status->dead) {
         lock_release(&child_status->lock);
         free(child_status);
     }
-    else {
-        child_status->orphan = true;
-        lock_release(&child_status->lock);
-    }
     tid = TID_ERROR;
-    return tid;
   }
   else{
     if(DEBUG) printf("BEFORE THREAD: %s\n", thread_name());
