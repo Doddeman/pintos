@@ -143,7 +143,7 @@ inode_open (disk_sector_t sector)
       if (inode->sector == sector)
         {
           inode_reopen (inode);
-            lock_release(&global_inode_lock); //lab4
+          lock_release(&global_inode_lock); //lab4
           return inode;
         }
     }
@@ -166,7 +166,6 @@ inode_open (disk_sector_t sector)
   sema_init(&inode->read_sema, 1);
   sema_init(&inode->write_sema, 1);
   inode->readcount = 0;
-  //sema_init(&inode->count_sema, 1);
   /*end lab4*/
 
   disk_read (filesys_disk, inode->sector, &inode->data);
