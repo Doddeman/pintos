@@ -120,7 +120,7 @@ int write (int fd, const void *buffer, unsigned size){
 
 //will return -1 if TID_ERROR
 int exec(const char * cmd_line){
-  if(DEBUG) printf("EXEC THREAD NAME + ID: %s + %d. LINE: %d\n",thread_current()->name, thread_current()->tid, __LINE__);
+  //if(DEBUG) printf("EXEC THREAD NAME + ID: %s + %d. LINE: %d\n",thread_current()->name, thread_current()->tid, __LINE__);
   int child_pid;
   child_pid = process_execute(cmd_line);
   if(DEBUG) printf("final exec child_pid: %d\n", child_pid);
