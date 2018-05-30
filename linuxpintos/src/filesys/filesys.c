@@ -18,7 +18,6 @@ static void do_format (void);
 void
 filesys_init (bool format)
 {
-  lock_init(&fs_lock); //lab4
   filesys_disk = disk_get (0, 1);
   if (filesys_disk == NULL)
     PANIC ("hd0:1 (hdb) not present, file system initialization failed");
@@ -30,6 +29,8 @@ filesys_init (bool format)
     do_format ();
 
   free_map_open ();
+
+  lock_init(&fs_lock); //lab4
 }
 
 /* Shuts down the file system module, writing any unwritten data
@@ -76,9 +77,8 @@ filesys_open (const char *name)
   if (dir != NULL)
     dir_lookup (dir, name, &inode);
   dir_close (dir);
-  struct file * file = file_open(inode);  //lab4
-  lock_release(&fs_lock);                 //lab4
-  return file;                            //lab4
+  lock_release(&fs_lock); //lab4
+  return file_open(inode);
 }
 
 /* Deletes the file named NAME.

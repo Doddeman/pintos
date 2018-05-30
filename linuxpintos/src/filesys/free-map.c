@@ -12,12 +12,13 @@ static struct bitmap *free_map;      /* Free map, one bit per disk sector. */
 void
 free_map_init (void)
 {
-  lock_init(&map_lock); //lab4
   free_map = bitmap_create (disk_size (filesys_disk));
   if (free_map == NULL)
     PANIC ("bitmap creation failed--disk is too large");
   bitmap_mark (free_map, FREE_MAP_SECTOR);
   bitmap_mark (free_map, ROOT_DIR_SECTOR);
+
+  lock_init(&map_lock); //lab4
 }
 
 /* Allocates CNT consecutive sectors from the free map and stores
